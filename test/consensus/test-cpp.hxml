@@ -2,6 +2,7 @@
 -main TestMain
 --library jsonpath
 --library thx.core
+--library yaml
 -dce full
 --cpp bin/cpp
 

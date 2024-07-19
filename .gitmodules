@@ -1,0 +1,3 @@
+[submodule "test/consensus/json-path-comparison"]
+	path = test/consensus/json-path-comparison
+	url = https://github.com/cburgmer/json-path-comparison/

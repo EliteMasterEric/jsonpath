@@ -132,9 +132,10 @@ class JSONPath {
                 case IndexSelector(index):
                     for (node in nodeList) {
                         if (!node.value.isArray()) continue;
-                        if (index < 0) {
-                            index = node.value.length() + index;
-                        }
+                        if (index < 0) index = node.value.length() + index;
+                        // Index out of bounds, provide no result.
+                        if (index < 0 || index >= node.value.length()) continue;
+
                         if (!node.value.exists('$index')) continue;
                         var newPath = node.path + "[" + index + "]";
                         result.push({
@@ -211,6 +212,7 @@ class JSONPath {
             case LogicalNotExpr(value):
                 // TODO: Implement
                 trace('NOT: ${value}');
+                throw 'Logical NOT expressions implemented';
             case LogicalTestQueryExpr(value):
                 switch (value) {
                     case FilterQuery(value):
@@ -220,6 +222,7 @@ class JSONPath {
                     case FunctionExpression(name, args):
                         // TODO: Implement
                         trace('FUNCTION: ${name}(${args})');
+                        throw 'Function expressions implemented';
                     default:
                         throw pathError_unexpectedElement(filter);
                 }
@@ -278,9 +281,7 @@ class JSONPath {
                     return NullLiteral;
                 }
             default:
-                // TODO: Implement
-                trace('COMPARABLE: ${expression}');
-                return NullLiteral;
+                throw pathError_unexpectedElement(expression);
         }
     }
 
@@ -351,10 +352,10 @@ class JSONPath {
                 case IndexSelector(index):
                     for (node in fullList) {
                         if (!node.value.isArray()) continue;
+                        if (index < 0) index = node.value.length() + index;
+                        // Index out of bounds, provide no result.
+                        if (index < 0 || index >= node.value.length()) continue;
 
-                        if (index < 0) {
-                            index = node.value.length() + index;
-                        }
                         var newPath = node.path + "[" + index + "]";
                         var pathValue = node.value.get('$index');
                         if (pathValue == null) continue;
@@ -392,6 +393,7 @@ class JSONPath {
                     }
                 case FilterSelector(filter):
                     // TODO: Implement
+                    throw 'Descendant filter selectors not implemented';
                 default:
                     throw pathError_unexpectedElement(selector);
             }
@@ -701,7 +703,7 @@ class JSONPathParser {
             case Token.Dollar:
                 return Element.JSONPathQuery(consumeTokens_Segment());
             default:
-                throw parserError_unexpectedToken(token);
+                throw parserError_unexpectedToken_rootSelector(token);
         }
     }
 
@@ -747,10 +749,14 @@ class JSONPathParser {
                         case MemberName(name):
                             var token = popToken();
                             result.push(Element.DescendantSegment([Element.NameSelector(name)]));
+                        case StringLiteral(name):
+                            var token = popToken();
+                            // TODO: Handle $.."key"?
+                            // result.push(Element.DescendantSegment([Element.NameSelector(name)]));
+                            throw parserError_unexpectedToken_doubleDotSelector_stringLiteral(name);
                         default:
-                            throw parserError_unexpectedToken(token);
+                            throw parserError_unexpectedToken_doubleDotSelector(peekToken());
                     }
-
 
                 default:
                     // throw parserError_unexpectedToken(token);
@@ -782,8 +788,15 @@ class JSONPathParser {
                 return Element.WildcardSelector;
             case MemberName(name):
                 return Element.NameSelector(name);
+            case IntegerLiteral(value):
+                // Handle $.2 as $['2']
+                return Element.NameSelector('$value');
+            case StringLiteral(value):
+                // TODO: Handle $."key"?
+                // return Element.NameSelector(value);
+                throw parserError_unexpectedToken_dotSelector_stringLiteral(value);
             default:
-                throw parserError_unexpectedToken(token);
+                throw parserError_unexpectedToken_dotSelector(token);
         }
     }
 
@@ -991,7 +1004,15 @@ class JSONPathParser {
                 return consumeTokens_comparisonOrTest();
             case At:
                 return consumeTokens_comparisonOrTest();
+            case StringLiteral(value):
+                return consumeTokens_comparisonOrTest();
+            case NumberLiteral(value):
+                return consumeTokens_comparisonOrTest();
+            case IntegerLiteral(value):
+                return consumeTokens_comparisonOrTest();
             case MemberName(name):
+                // TODO: Handle this?
+                // if (name == "true" || name == "false" || name == "null") {}
                 var token = popToken();
                 if (isValidFunctionExpression(name)) {
                     return Element.LogicalTestQueryExpr(
@@ -1058,14 +1079,23 @@ class JSONPathParser {
     }
 
     function consumeTokens_comparisonOrTest():Element {
-        var filterQuery:Element = null;
+        var left:Element = null;
         switch(peekToken()) {
+            case StringLiteral(value):
+                popToken();
+                left = PrimitiveLiteralExpr(StringLiteral(value));
+            case NumberLiteral(value):
+                popToken();
+                left = PrimitiveLiteralExpr(NumberLiteral(value));
+            case IntegerLiteral(value):
+                popToken();
+                left = PrimitiveLiteralExpr(IntegerLiteral(value));
             case Dollar:
-                filterQuery = Element.FilterQuery(
+                left = Element.FilterQuery(
                     consumeToken_JSONPathQuery()
                 );
             case At:
-                filterQuery = Element.FilterQuery(
+                left = Element.FilterQuery(
                     consumeToken_RelativeQuery()
                 );
             default:
@@ -1079,21 +1109,21 @@ class JSONPathParser {
             case Comparison(op):
                 var token = popToken();
                 return Element.LogicalComparisionExpr(
-                    filterQuery,
+                    left,
                     op,
                     consumeToken_comparable()
                 );
             case Comma:
                 return Element.LogicalTestQueryExpr(
-                    filterQuery
+                    left
                 );
             case null:
                 return Element.LogicalTestQueryExpr(
-                    filterQuery
+                    left
                 );
             default:
                 return Element.LogicalTestQueryExpr(
-                    filterQuery
+                    left
                 );
                 //throw parserError_unexpectedToken(token);
         }
@@ -1147,6 +1177,26 @@ class JSONPathParser {
 
     static function parserError_unexpectedToken(token:Token):String {
         return 'Unexpected token: ${token}';
+    }
+
+    static function parserError_unexpectedToken_rootSelector(token:Token):String {
+        return 'JSONPath query must start with "$", but got token: ${token}';
+    }
+
+    static function parserError_unexpectedToken_dotSelector(token:Token):String {
+        return 'Expected member name or array index after ".", but got token: ${token}';
+    }
+
+    static function parserError_unexpectedToken_dotSelector_stringLiteral(input:String):String {
+        return 'Expected member name or array index after ".", but got string literal: ${input}';
+    }
+
+    static function parserError_unexpectedToken_doubleDotSelector(token:Token):String {
+        return 'Expected member name or array index after "..", but got token: ${token}';
+    }
+
+    static function parserError_unexpectedToken_doubleDotSelector_stringLiteral(input:String):String {
+        return 'Expected member name or array index after "..", but got string literal: ${input}';
     }
 }
 
@@ -1578,7 +1628,8 @@ class JSONPathLexer {
         result += String.fromCharCode(char);
 
         var char = peekChar();
-        while (!eof() && (isNameFirst(char) || isDigit(char))) {
+        // Allow - and digits in member names but not first character.
+        while (!eof() && (isNameFirst(char) || isDigit(char) || char == MINUS)) {
             result += readToken_unescaped(false);
             char = peekChar();
         }

@@ -6,17 +6,9 @@ class TestMain {
     public static function main():Void {
         resetWorkingDir();
       
-        trace('===STARTING TESTS===');
+        trace('===STARTING CONSENSUS TESTS===');
 
-        //hScriptTest();
-
-        json.util.SliceUtilTest.test();
-
-        json.JSONDataTest.test();
-
-        json.path.JSONPathLexerTest.test();
-        json.path.JSONPathParserTest.test();
-        json.path.JSONPathTest.test();
+        json.path.JSONPathConsensusTest.test();
 
         trace('===ALL TESTS DONE===');
     }

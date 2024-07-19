@@ -1,9 +1,9 @@
 {
-  "name": "jsonmerge",
-  "url" : "https://github.com/EliteMasterEric/jsonmerge",
+  "name": "jsonpath",
+  "url" : "https://github.com/EliteMasterEric/jsonpath",
   "license": "MIT",
-  "tags": ["json","data"],
-  "description": "An utility library for merging and patching JSON data",
+  "tags": ["json","data","jsonpath"],
+  "description": "A library for parsing and evaluating JSONPath queries on JSON data objects.",
   "version": "1.0.0",
   "releasenote": "Initial release",
   "contributors": ["MasterEric", "larsiusprime"]

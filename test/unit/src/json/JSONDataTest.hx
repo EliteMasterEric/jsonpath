@@ -1,4 +1,4 @@
-package json.merge;
+package json;
 
 class JSONDataTest
 {

@@ -10,7 +10,8 @@ class JSONPathTest
         testNormalizedPath();
         testQueryPaths();
         testBookstore();
-        testComparison();
+        testBugs();
+        testErrors();
 
         trace('JSONPathTest: Done.');
     }
@@ -507,5 +508,170 @@ class JSONPathTest
                     "$['store']['book'][2]['title']", "$['store']['book'][2]['category']", "$['store']['book'][2]['price']", "$['store']['book'][2]['author']", "$['store']['book'][2]['isbn']",
                     "$['store']['book'][3]['title']", "$['store']['book'][3]['category']", "$['store']['book'][3]['price']", "$['store']['book'][3]['author']", "$['store']['book'][3]['isbn']"
         ]);
-    } 
+    }
+
+    public static function testBugs():Void {
+        // https://cburgmer.github.io/json-path-comparison/results/bracket_notation_with_negative_number_on_short_array.html
+        var data:JSONData = ["one element"];
+        var resultPaths = JSONPath.queryPaths('$[-2]', data);
+        var result = JSONPath.query('$[-2]', data);
+        Test.assertEqualsUnordered(resultPaths, []);
+        Test.assertEqualsUnordered(result, []);
+
+        // https://cburgmer.github.io/json-path-comparison/results/filter_expression_with_tautological_comparison.html
+        var data:JSONData = [1, 3, "nice", true, null, false, {}, [], -1, 0, ""];
+        var resultPaths = JSONPath.queryPaths('$[?(1==1)]', data);
+        var result = JSONPath.query('$[?(1==1)]', data);
+        Test.assertEqualsUnordered(resultPaths, ["$[0]", "$[1]", "$[2]", "$[3]", "$[4]", "$[5]", "$[6]", "$[7]", "$[8]", "$[9]", "$[10]"]);
+        Test.assertEqualsUnordered(result, [1, 3, "nice", true, null, false, {}, [], -1, 0, ""]);
+        
+        // https://cburgmer.github.io/json-path-comparison/results/filter_expression_with_equals_string_in_NFC.html
+        var data:JSONData = [
+            {"key": "something"},
+            {"key": "Mot\u00f6rhead"},
+            {"key": "mot\u00f6rhead"},
+            {"key": "Motorhead"},
+            {"key": "Motoo\u0308rhead"},
+            {"key": "motoo\u0308rhead"}
+          ];
+          var resultPaths = JSONPath.queryPaths('$[?(@.key=="Motörhead")]', data);
+          var result = JSONPath.query('$[?(@.key=="Motörhead")]', data);
+        Test.assertEqualsUnordered(resultPaths, ["$[1]"]);
+        Test.assertEqualsUnordered(result, [{"key": "Mot\u00f6rhead"}]);
+
+        // https://cburgmer.github.io/json-path-comparison/results/filter_expression_with_greater_than_string.html
+        var data:JSONData = [
+            {"key": 0}, // 0
+            {"key": 42},
+            {"key": -1},
+            {"key": 41},
+            {"key": 43},
+            {"key": 42.0001},
+            {"key": 41.9999},
+            {"key": 100},
+            {"key": "43"},
+            {"key": "42"},
+            {"key": "41"}, // 10
+            {"key": "alpha"},
+            {"key": "ALPHA"},
+            {"key": "value"},
+            {"key": "VALUE"},
+            {"some": "value"},
+            {"some": "VALUE"}
+        ];
+        var resultPaths = JSONPath.queryPaths('$[?(@.key>"VALUE")]', data);
+        var result = JSONPath.query('$[?(@.key>"VALUE")]', data);
+        Test.assertEqualsUnordered(resultPaths, ["$[11]", "$[13]"]);
+        Test.assertEqualsUnordered(result, [{"key": "alpha"}, {"key": "value"}]);
+
+        // https://cburgmer.github.io/json-path-comparison/results/dot_notation_with_number_on_object.html
+        var data:JSONData = {"a": "first", "2": "second", "b": "third"};
+        var resultPaths = JSONPath.queryPaths('$.2', data);
+        var result = JSONPath.query('$.2', data);
+        Test.assertEqualsUnordered(resultPaths, ["$['2']"]);
+        Test.assertEqualsUnordered(result, ["second"]);
+
+        // https://cburgmer.github.io/json-path-comparison/results/dot_notation_with_non_ASCII_key.html
+        // TODO: Haxe does not handle non-ASCII characters in keys
+        /*
+        var data:JSONData = {
+            "屬性": "value"
+        };
+        var resultPaths = JSONPath.queryPaths('$.屬性', data);
+        var result = JSONPath.query('$.屬性', data);
+        Test.assertEqualsUnordered(resultPaths, ["$['屬性']"]);
+        Test.assertEqualsUnordered(result, ["value"]);
+        */
+
+        // https://cburgmer.github.io/json-path-comparison/results/dot_notation_with_dash.html
+        var data:JSONData = {
+            "key": 42,
+            "key-": 43,
+            "-": 44,
+            "dash": 45,
+            "-dash": 46,
+            "": 47,
+            "key-dash": "value",
+            "something": "else"
+        };
+        var resultPaths = JSONPath.queryPaths('$.key-dash', data);
+        var result = JSONPath.query('$.key-dash', data);
+        Test.assertEqualsUnordered(resultPaths, ["$['key-dash']"]);
+        Test.assertEqualsUnordered(result, ["value"]);
+    }
+
+    public static function testErrors():Void {
+        // https://cburgmer.github.io/json-path-comparison/results/current_with_dot_notation.html
+        var data = { "a": 1 };
+        Test.assertError(() -> {
+            var result = JSONPath.query('@.a', data);
+            trace(result);
+        }, 'JSONPath query must start with "$", but got token: At');
+
+        // https://cburgmer.github.io/json-path-comparison/results/dot_bracket_notation.html
+        var data = {
+            "key": "value",
+            "other": {"key": [{"key": 42}]}
+        };
+        Test.assertError(() -> {
+            var result = JSONPath.query("$.['key']", data);
+            trace(result);
+        }, 'Expected member name or array index after ".", but got token: Brackets([StringLiteral(key)])');
+
+        // https://cburgmer.github.io/json-path-comparison/results/dot_bracket_notation_with_double_quotes.html
+        var data = {
+            "key": "value",
+            "other": {"key": [{"key": 42}]}
+        };
+        Test.assertError(() -> {
+            var result = JSONPath.query('$.["key"]', data);
+            trace(result);
+        }, 'Expected member name or array index after ".", but got token: Brackets([StringLiteral(key)])');
+
+        // https://cburgmer.github.io/json-path-comparison/results/dot_notation_after_recursive_descent_with_extra_dot.html
+        var data1:Array<Dynamic> = [
+            {"key": "something"},
+            {"key": {"key": "russian dolls"}}
+        ];
+        var data = {
+            "object": {
+                "key": "value",
+                "array": data1
+            },
+            "key": "top"
+        };
+        Test.assertError(() -> {
+            var result = JSONPath.query('$...key', data);
+            trace(result);
+        }, 'Expected member name or array index after "..", but got token: Dot');
+
+        // https://cburgmer.github.io/json-path-comparison/results/dot_notation_with_double_quotes.html
+        var data = {
+            "key": "value",
+            "\"key\"": 42
+        };
+        Test.assertError(() -> {
+            var result = JSONPath.query('$."key"', data);
+            trace(result);
+        }, 'Expected member name or array index after ".", but got string literal: key');
+
+        // https://cburgmer.github.io/json-path-comparison/results/dot_notation_with_double_quotes_after_recursive_descent.html
+        var data1:Array<Dynamic> = [
+            {"key": "something", "\"key\"": 0},
+            {"key": {"key": "russian dolls"}, "\"key\"": {"\"key\"": 99}}
+          ];
+        var data = {
+            "object": {
+              "key": "value",
+              "\"key\"": 100,
+              "array": data1
+            },
+            "key": "top",
+            "\"key\"": 42
+        };
+        Test.assertError(() -> {
+            var result = JSONPath.query('$.."key"', data);
+            trace(result);
+        }, 'Expected member name or array index after "..", but got string literal: key');
+    }
 }

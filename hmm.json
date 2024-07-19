@@ -13,6 +13,11 @@
       "dir": null,
       "ref": "master",
       "url": "https://github.com/haxe-utest/utest"
+    },
+    {
+      "name": "yaml",
+      "type": "haxelib",
+      "version": null
     }
   ]
 }

@@ -1,5 +1,6 @@
 *.hl
-test/bin
+test/unit/bin
+test/consensus/bin
 
 # test dependencies
 .haxelib
