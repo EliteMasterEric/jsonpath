@@ -34,13 +34,15 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 	 * @return The value, or `null` if the key is not present.
 	 */
 	@:arrayAccess
-	public inline function get(key:String):Null<Dynamic>
+	public inline function get(key:String, ?defaultValue:Dynamic):Null<Dynamic>
 	{
         #if js
-		return untyped this[key]; // we know it's an object, so we don't need a check
+		var result = untyped this[key]; // we know it's an object, so we don't need a check
 		#else
-        return isObject() ? get_obj(key) : get_arr(key);
+        var result = isObject() ? get_obj(key) : get_arr(key);
         #end
+        if (result == null) return defaultValue;
+        return result;
 	}
 
     inline function get_obj(key:String):Null<Dynamic> {

@@ -18,12 +18,6 @@ trace(JSONPath.queryPaths(query, data));
 trace(JSONPath.query(query, data))
 ```
 
-### JSONPath To-Dos
-
-[] Implement Logical NOT
-[] Implement Function Expressions
-[] Implement Filter Selectors on Descendant Segments
-
 ## JSONPatch
 https://github.com/json-patch/json-patch2/issues?page=2&q=is%3Aissue+is%3Aopen
 https://datatracker.ietf.org/doc/rfc6901/

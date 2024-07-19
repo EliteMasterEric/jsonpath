@@ -1,14 +1,16 @@
 package;
 
+import test.consensus.src.json.path.JSONPathComplianceTest;
 import haxe.io.Path;
 
 class TestMain {
     public static function main():Void {
         resetWorkingDir();
       
-        trace('===STARTING CONSENSUS TESTS===');
+        trace('===STARTING TESTS===');
 
-        json.path.JSONPathConsensusTest.test();
+        JSONPathComplianceTest.test();
+        // json.path.JSONPathConsensusTest.test();
 
         trace('===ALL TESTS DONE===');
     }

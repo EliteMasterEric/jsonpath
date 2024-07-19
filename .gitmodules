@@ -1,3 +1,6 @@
 [submodule "test/consensus/json-path-comparison"]
 	path = test/consensus/json-path-comparison
 	url = https://github.com/cburgmer/json-path-comparison/
+[submodule "test/consensus/jsonpath-compliance-test-suite"]
+	path = test/consensus/jsonpath-compliance-test-suite
+	url = https://github.com/jsonpath-standard/jsonpath-compliance-test-suite/

@@ -4,6 +4,7 @@ import json.JSONData;
 import json.util.SliceUtil;
 import json.util.ArrayUtil;
 import json.path.PrimitiveLiteral;
+import json.path.FunctionExpression;
 
 using StringTools;
 
@@ -121,6 +122,7 @@ class JSONPath {
                 case NameSelector(name):
                     for (node in nodeList) {
                         if (node.value == null) continue;
+                        if (node.value.isArray()) continue;
                         if (!node.value.exists(name)) continue;
 
                         var newPath = node.path + "['" + name + "']";
@@ -196,7 +198,12 @@ class JSONPath {
             case LogicalOrExpr(values):
                 for (value in values) {
                     var subResult = queryPaths_ChildFilterSelector(value, targetNode, rootValue);
-                    result = result.concat(subResult);
+                    // TODO: Does this break queries with duplicate values in?
+                    if (result.length == 0) {
+                        result = subResult;
+                    } else {
+                        result = result.concat(ArrayUtil.subtract(subResult, result));
+                    }
                 }
             case LogicalAndExpr(values):
                 var hasFirstResult = false;
@@ -210,19 +217,31 @@ class JSONPath {
                     }
                 }
             case LogicalNotExpr(value):
-                // TODO: Implement
-                trace('NOT: ${value}');
-                throw 'Logical NOT expressions implemented';
+                var keys = targetNode.value.keys();
+                var isArray = targetNode.value.isArray();
+                var subResultAll:Array<JSONNode> = [];
+                for (key in keys) {
+                    var childValue = targetNode.value.get(key);
+                    var childPath = targetNode.path + (isArray ? "[" + key + "]" : "['" + key + "']");
+                    var childNode = {
+                        path: childPath,
+                        value: childValue
+                    };
+                    subResultAll.push(childNode);
+                }
+
+                var subResult = queryPaths_ChildFilterSelector(value, targetNode, rootValue);
+
+                result = ArrayUtil.subtract(subResultAll, subResult);
             case LogicalTestQueryExpr(value):
                 switch (value) {
                     case FilterQuery(value):
                         // Check for existance of the query result.
                         var queryResult = queryPaths_TestFilterQuery(value, targetNode, rootValue);
                         result = result.concat(queryResult);
-                    case FunctionExpression(name, args):
-                        // TODO: Implement
-                        trace('FUNCTION: ${name}(${args})');
-                        throw 'Function expressions implemented';
+                    case FunctionExpressionElement(name, args):
+                        var queryResult = queryPaths_TestFunctionExpression(name, args, targetNode, rootValue);
+                        result = result.concat(queryResult);
                     default:
                         throw pathError_unexpectedElement(filter);
                 }
@@ -267,22 +286,44 @@ class JSONPath {
      * If the expression evaluates to a node, return a BoolLiteral for whether it exists.
      * If the expression evaluates to a value, return a Literal for that value.
      */
-    static function queryPaths_Comparable(expression:Element, targetNode:JSONNode, rootValue:JSONData):PrimitiveLiteral {
+    static function queryPaths_Comparable(expression:Element, targetNode:JSONNode, rootValue:JSONData, ?asNodelist:Bool = false):PrimitiveLiteral {
         switch(expression) {
+            case LogicalTestQueryExpr(element):
+                return queryPaths_Comparable(element, targetNode, rootValue);
             case PrimitiveLiteralExpr(value):
                 return value;
+            case FunctionExpressionElement(name, arguments):
+                return queryPaths_FunctionExpression_Value(name, arguments, targetNode, rootValue);
             case FilterQuery(value):
                 var subResult = queryPaths_ValueFilterQuery(value, targetNode, rootValue);
                 if (subResult.length > 1) {
-                    throw pathError_singularQueryMultipleResults(subResult);
+                    var result = subResult.map((node) -> PrimitiveLiteralTools.fromJSONData(node.value));
+                    return NodelistLiteral(result);
                 } else if (subResult.length == 1) {
-                    return PrimitiveLiteralTools.fromJSONData(subResult[0].value);   
+                    if (asNodelist) {
+                        return NodelistLiteral([PrimitiveLiteralTools.fromJSONData(subResult[0].value)]);
+                    } else {
+                        return PrimitiveLiteralTools.fromJSONData(subResult[0].value);   
+                    }
                 } else {
-                    return NullLiteral;
+                    return UndefinedLiteral;
                 }
             default:
                 throw pathError_unexpectedElement(expression);
         }
+    }
+
+    static function queryPaths_FunctionExpression_Value(name:String, arguments:Array<Element>, targetNode:JSONNode, rootValue:JSONData):PrimitiveLiteral {
+        var parsedArgs:Array<PrimitiveLiteral> = [];
+        for (arg in arguments) {
+            parsedArgs.push(queryPaths_Comparable(arg, targetNode, rootValue, true));
+        }
+
+        if (!FunctionExpression.isValidFunctionExpression(name)) {
+            throw 'Unknown function: ${name}';
+        }
+
+        return FunctionExpression.evaluateFunction(name, parsedArgs);
     }
 
     /**
@@ -306,6 +347,37 @@ class JSONPath {
             var subResult = queryPaths_ElementQuery(subquery, childNode.value, rootValue);
             if (subResult.length > 0) {
                 results.push(childNode);
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Return each node for which the function evaluates to true.
+     */
+     static function queryPaths_TestFunctionExpression(name:String, args:Array<Element>, targetNode:JSONNode, rootValue:JSONData):Array<JSONNode> {
+        // Perform a filter query on the child elements of the target node.
+        var keys = targetNode.value.keys();
+        var isArray = targetNode.value.isArray();
+
+        var results:Array<JSONNode> = [];
+        for (key in keys) {
+            var childValue = targetNode.value.get(key);
+            var childPath = targetNode.path + (isArray ? "[" + key + "]" : "['" + key + "']");
+            var childNode = {
+                path: childPath,
+                value: childValue
+            };
+
+            var subResult = queryPaths_FunctionExpression_Value(name, args, childNode.value, rootValue);
+            switch (subResult) {
+                case BooleanLiteral(value):
+                    if (value) {
+                        results.push(childNode);
+                    }
+                default:
+                    // Do nothing
             }
         }
 
@@ -341,6 +413,7 @@ class JSONPath {
                     for (node in fullList) {
                         var newPath = node.path + "['" + name + "']";
 
+                        if (node.value.isArray()) continue;
                         var pathValue = node.value.get(name);
                         if (pathValue == null) continue;
 
@@ -392,8 +465,11 @@ class JSONPath {
                         }
                     }
                 case FilterSelector(filter):
-                    // TODO: Implement
-                    throw 'Descendant filter selectors not implemented';
+                    for (node in fullList) {
+                        var results = queryPaths_ChildFilterSelector(filter, node, rootValue);
+
+                        result = result.concat(results);
+                    }
                 default:
                     throw pathError_unexpectedElement(selector);
             }
@@ -647,7 +723,7 @@ enum Element {
      * A function expression which evaluates a named function extension.
      * Arguments can be one of PrimitiveLiteral, FilterQuery, LogicalExpression, or FunctionExpression
      */
-    FunctionExpression(name:String, arguments:Array<Element>);
+    FunctionExpressionElement(name:String, arguments:Array<Element>);
 }
 
 @:access(json.path.JSONPathParser)
@@ -655,30 +731,7 @@ class JSONPathParser {
     var tokens:Array<Token>;
     var readPos:Int = 0;
 
-    var functionExpressions:Array<String> = [];
-
     public function new() {
-        registerDefaultFunctionExpressions();
-    }
-
-    function registerDefaultFunctionExpressions():Void {
-        registerFunctionExpression("length");
-        registerFunctionExpression("count");
-        registerFunctionExpression("match");
-        registerFunctionExpression("search");
-        registerFunctionExpression("value");
-    }
-
-    function registerFunctionExpression(name:String):Void {
-        functionExpressions.push(name);
-    }
-
-    function isValidFunctionExpression(name:String):Bool {
-        return functionExpressions.indexOf(name) != -1;
-    }
-
-    function getFunctionExpression(name:String):() -> Void {
-        return null;
     }
 
     public function parse(path:String):Null<Element> {
@@ -815,7 +868,7 @@ class JSONPathParser {
                     result.push(Element.WildcardSelector);
                 case IntegerLiteral(number): // Index or ArraySlice
                     // Look at the token after.
-                    switch (peekToken()) {
+                    switch (peekNonWhitespaceToken()) {
                         case Colon:
                             // ArraySlice
                             result.push(consumeTokens_ArraySliceSelector(token));
@@ -870,10 +923,14 @@ class JSONPathParser {
             }
         }
 
+        popWhitespace();
+
         if (!emptyStart) {   
             var token = popToken();
             if (token != Colon) throw parserError_unexpectedToken(token);
         }
+
+        popWhitespace();
 
         var token = peekToken();
         switch (token) {
@@ -884,12 +941,16 @@ class JSONPathParser {
                 // Do nothing.
         }
 
+        popWhitespace();
+
         var token = peekToken();
         if (token != Colon) {
             return Element.ArraySliceSelector(start, end, step);
         } else {
             popToken();
         }
+
+        popWhitespace();
 
         var token = peekToken();
         switch (token) {
@@ -985,8 +1046,10 @@ class JSONPathParser {
                 }
             case LogicalNot:
                 var token = popToken();
+                popWhitespace();
                 switch (peekToken()) {
                     case Parens(values):
+                        var token = popToken();
                         var subParser = new JSONPathParser();
                         @:privateAccess
                         {
@@ -997,6 +1060,10 @@ class JSONPathParser {
                             }
                             return Element.LogicalNotExpr(result);
                         }
+                    case Dollar:
+                        return Element.LogicalNotExpr(consumeTokens_logicalBasicExpr());
+                    case At:
+                        return Element.LogicalNotExpr(consumeTokens_logicalBasicExpr());
                     default:
                         throw parserError_unexpectedToken(peekToken());
                 }
@@ -1011,16 +1078,7 @@ class JSONPathParser {
             case IntegerLiteral(value):
                 return consumeTokens_comparisonOrTest();
             case MemberName(name):
-                // TODO: Handle this?
-                // if (name == "true" || name == "false" || name == "null") {}
-                var token = popToken();
-                if (isValidFunctionExpression(name)) {
-                    return Element.LogicalTestQueryExpr(
-                        Element.FunctionExpression(name, consumeTokens_FunctionExpression())
-                    );
-                } else {
-                    throw parserError_unexpectedToken(token);
-                }
+                return consumeTokens_comparisonOrTest();
             default:
                 throw parserError_unexpectedToken(peekToken());
         }
@@ -1054,6 +1112,31 @@ class JSONPathParser {
                 case StringLiteral(value):
                     var token = popToken();
                     result.push(Element.PrimitiveLiteralExpr(StringLiteral(value)));
+                case NumberLiteral(value):
+                    var token = popToken();
+                    result.push(Element.PrimitiveLiteralExpr(NumberLiteral(value)));
+                case IntegerLiteral(value):
+                    var token = popToken();
+                    result.push(Element.PrimitiveLiteralExpr(IntegerLiteral(value)));
+                case MemberName(value):
+                    switch (value) {
+                        case "true":
+                            var token = popToken();
+                            result.push(Element.PrimitiveLiteralExpr(BooleanLiteral(true)));
+                        case "false":
+                            var token = popToken();
+                            result.push(Element.PrimitiveLiteralExpr(BooleanLiteral(false)));
+                        case "null":
+                            var token = popToken();
+                            result.push(Element.PrimitiveLiteralExpr(NullLiteral));
+                        default:
+                            if (FunctionExpression.isValidFunctionExpression(value)) {
+                                var token = popToken();
+                                result.push(Element.FunctionExpressionElement(value, consumeTokens_FunctionExpression()));
+                            } else {
+                                throw parserError_unexpectedToken(peekToken());
+                            }
+                    }
                 case At:
                     result.push(consumeTokens_comparisonOrTest());
                 case Dollar:
@@ -1098,6 +1181,22 @@ class JSONPathParser {
                 left = Element.FilterQuery(
                     consumeToken_RelativeQuery()
                 );
+            case MemberName(name):
+                switch (name) {
+                    case "true":
+                        left = Element.PrimitiveLiteralExpr(BooleanLiteral(true));
+                    case "false":
+                        left = Element.PrimitiveLiteralExpr(BooleanLiteral(false));
+                    case "null":
+                        left = Element.PrimitiveLiteralExpr(NullLiteral);
+                    default:
+                        if (FunctionExpression.isValidFunctionExpression(name)) {
+                            var token = popToken();
+                            left = Element.FunctionExpressionElement(name, consumeTokens_FunctionExpression());
+                        } else {
+                            throw parserError_unexpectedToken(peekToken());
+                        }
+                }
             default:
                 throw parserError_unexpectedToken(peekToken());
         }
@@ -1144,11 +1243,32 @@ class JSONPathParser {
             case StringLiteral(value): // String
                 var token = popToken();
                 return Element.PrimitiveLiteralExpr(StringLiteral(value));
+            case MemberName(value):
+                switch (value) {
+                    case "true":
+                        var token = popToken();
+                        return Element.PrimitiveLiteralExpr(BooleanLiteral(true));
+                    case "false":
+                        var token = popToken();
+                        return Element.PrimitiveLiteralExpr(BooleanLiteral(false));
+                    case "null":
+                        var token = popToken();
+                        return Element.PrimitiveLiteralExpr(NullLiteral);
+                    default:
+                        if (FunctionExpression.isValidFunctionExpression(value)) {
+                            var token = popToken();
+                            return Element.FunctionExpressionElement(value, consumeTokens_FunctionExpression());
+                        } else {
+                            throw parserError_unexpectedToken(peekToken());
+                        }
+
+                        throw parserError_unexpectedToken_comparable_memberName(value);
+                }
             case Whitespace:
                 var token = popToken();
                 return consumeToken_comparable();
             default:
-                throw parserError_unexpectedToken(peekToken());
+                throw parserError_unexpectedToken_comparable(peekToken());
         }
     }
 
@@ -1167,6 +1287,13 @@ class JSONPathParser {
         return tokens[readPos + index];
     }
 
+    function peekNonWhitespaceToken(index:Int = 0):Null<Token> {
+        while (peekToken(index) == Whitespace) {
+            index++;
+        }
+        return peekToken(index);
+    }
+
     function previewTokens():Array<Token> {
         return tokens.slice(readPos);
     }
@@ -1181,6 +1308,14 @@ class JSONPathParser {
 
     static function parserError_unexpectedToken_rootSelector(token:Token):String {
         return 'JSONPath query must start with "$", but got token: ${token}';
+    }
+
+    static function parserError_unexpectedToken_comparable_memberName(input:String):String {
+        return 'Expected comparable value, but got member name: ${input}';
+    }
+
+    static function parserError_unexpectedToken_comparable(token:Token):String {
+        return 'Expected comparable value, but got token: ${token}';    
     }
 
     static function parserError_unexpectedToken_dotSelector(token:Token):String {
@@ -1424,8 +1559,9 @@ class JSONPathLexer {
                 return Token.Question;
             case AT:
                 var char = popChar();
-
+            
                 return Token.At;
+
             case PERIOD:
                 return readToken_distinguish_period();
 
@@ -1562,7 +1698,7 @@ class JSONPathLexer {
                     return Token.Comparison('<');
                 }
             case EQUALS:
-                if (!(peekChar() == EQUALS)) throw formatError_UnexpectedChar(String.fromCharCode(char));
+                if (!(peekChar() == EQUALS)) throw formatError_UnexpectedChar(String.fromCharCode(peekChar()));
                 var char = popChar();
                 return Token.Comparison('==');
             default:        
@@ -1601,8 +1737,8 @@ class JSONPathLexer {
 
         var isFloat = false;
         var char = peekChar();
-        while (!eof() && (isDigit(char) || char == MINUS || char == PERIOD)) {
-            if (char == PERIOD) isFloat = true;
+        while (!eof() && (isDigit(char) || char == MINUS || char == PERIOD || char == E || char == PLUS)) {
+            if (char == PERIOD || char == E || char == PLUS) isFloat = true;
             result += readToken_unescaped(false);
             char = peekChar();
         }

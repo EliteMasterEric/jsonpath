@@ -36,16 +36,28 @@ class SliceUtil {
 
         var result = [];
         if (step > 0) {
-            var i = lower;
-            while (i < upper) {
-                result.push(i);
-                i += step;
+            if (step > len) {
+                // Edge case: large positive step
+                result.push(lower);
+            } else {
+                // Standard case: positive step
+                var i = lower;
+                while (i < upper) {
+                    result.push(i);
+                    i += step;
+                }
             }
         } else if (step < 0) {
-            var i = upper;
-            while (lower < i) {
-                result.push(i);
-                i += step;
+            if (step < -len) {
+                // Edge case: large negative step
+                result.push(upper);
+            } else {
+                // Standard case: negative step   
+                var i = upper;
+                while (lower < i) {
+                    result.push(i);
+                    i += step;
+                }
             }
         }
         return result;

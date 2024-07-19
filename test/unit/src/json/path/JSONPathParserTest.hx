@@ -298,7 +298,7 @@ class JSONPathParserTest
             Element.ChildSegment([Element.NameSelector('a')]),
             Element.ChildSegment([Element.FilterSelector(
                 Element.LogicalOrExpr([
-                    Element.LogicalTestQueryExpr(Element.FunctionExpression(
+                    Element.LogicalTestQueryExpr(Element.FunctionExpressionElement(
                         'match',
                         [
                             Element.LogicalTestQueryExpr(Element.FilterQuery(
@@ -318,7 +318,7 @@ class JSONPathParserTest
             Element.ChildSegment([Element.NameSelector('a')]),
             Element.ChildSegment([Element.FilterSelector(
                 Element.LogicalOrExpr([
-                    Element.LogicalTestQueryExpr(Element.FunctionExpression(
+                    Element.LogicalTestQueryExpr(Element.FunctionExpressionElement(
                         'search',
                         [
                             Element.LogicalTestQueryExpr(Element.FilterQuery(

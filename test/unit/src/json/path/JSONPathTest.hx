@@ -673,5 +673,189 @@ class JSONPathTest
             var result = JSONPath.query('$.."key"', data);
             trace(result);
         }, 'Expected member name or array index after "..", but got string literal: key');
+
+        //
+        // From compliance test suite
+        // 
+
+        // whitespace, slice, return between colon and step
+        var data = [1, 2, 3, 4, 5, 6];
+        var result = JSONPath.query('$[1:5:\r2]', data);
+        Test.assertEqualsUnordered(result, [2, 4]);
+
+        // basic, wildcard shorthand, object data
+        var data = { "a": "A", "b": "B" };
+        var result = JSONPath.query('$.*', data);
+        Test.assertEqualsUnordered(result, ["A", "B"]);
+
+        // filter, equals null
+        var data = [ { "a": null, "d": "e" }, { "a": "c", "d": "f" } ];
+        var result = JSONPath.query('$[?@.a==null]', data);
+        Test.assertEqualsUnordered(result, [{ "a": null, "d": "e" }]);
+
+        // filter, equals true
+        var data:Array<Dynamic> = [ { "a": true, "d": "e" }, { "a": "c", "d": "f" } ];
+        var result = JSONPath.query('$[?@.a==true]', data);
+        Test.assertEqualsUnordered(result, [{ "a": true, "d": "e" }]);
+
+        // filter, equals false
+        var data:Array<Dynamic> = [ { "a": false, "d": "e" }, { "a": "c", "d": "f" } ];
+        var result = JSONPath.query('$[?@.a==false]', data);
+        Test.assertEqualsUnordered(result, [{ "a": false, "d": "e" }]);
+
+        // filter, exists or exists, data false
+        var data:Array<Dynamic> = [ { "a": false, "b": false }, { "b": false }, { "c": false } ];
+        var result = JSONPath.query("$[?@.a||@.b]", data);
+        Test.assertEqualsUnordered(result, [{ "a": false, "b": false }, { "b": false }]);
+
+        // filter, not expression
+        var data = [ { "a": "a", "d": "e" }, { "a": "b", "d": "f" }, { "a": "d", "d": "f" } ];
+        var result = JSONPath.query("$[?!(@.a=='b')]", data);
+        Test.assertEqualsUnordered(result, [{ "a": "a", "d": "e" }, { "a": "d", "d": "f" }]);
+
+        // filter, equals null, absent from data
+        var data = [ { "d": "e" }, { "a": "c", "d": "f" } ];
+        var result = JSONPath.query('$[?@.a==null]', data);
+        Test.assertEqualsUnordered(result, []);
+
+        // filter, not-equals null, absent from data
+        var data = [ { "d": "e" }, { "a": "c", "d": "f" } ];
+        var result = JSONPath.query('$[?@.a!=null]', data);
+        Test.assertEqualsUnordered(result, [{ "d": "e" }, { "a": "c", "d": "f" }]);
+
+        // filter, not exists
+        var data = [ { "a": "a", "d": "e" }, { "d": "f" }, { "a": "d", "d": "f" } ];
+        var result = JSONPath.query('$[?!@.a]', data);
+        Test.assertEqualsUnordered(result, [{ "d": "f" }]);
+
+        // filter, not exists, data null
+        var data = [ { "a": null, "d": "e" }, { "d": "f" }, { "a": "d", "d": "f" } ];
+        var result = JSONPath.query('$[?!@.a]', data);
+        Test.assertEqualsUnordered(result, [{ "d": "f" }]);
+
+        // filter, non-singular existence, negated
+        var data:Array<Dynamic> = [ 1, [], [ 2 ], {}, { "a": 3 } ];
+        var result = JSONPath.query('$[?!@.*]', data);
+        Test.assertEqualsUnordered(result, [1, [], {}]);
+
+        // filter, name segment on array, selects nothing
+        var data = [ [ 5, 6 ] ];
+        var result = JSONPath.query("$[?@['0'] == 5]", data);
+        Test.assertEqualsUnordered(result, []);
+
+        // filter, equals number, exponent
+        var data:Array<Dynamic> = [ { "a": 100, "d": "e" }, { "a": 100.1, "d": "f" }, { "a": "100", "d": "g" } ];
+        var result = JSONPath.query("$[?@.a==1e2]", data);
+        Test.assertEqualsUnordered(result, [{ "a": 100, "d": "e" }]);
+
+        // filter, equals number, positive exponent
+        var data:Array<Dynamic> = [ { "a": 100, "d": "e" }, { "a": 100.1, "d": "f" }, { "a": "100", "d": "g" } ];
+        var result = JSONPath.query("$[?@.a==1e+2]", data);
+        Test.assertEqualsUnordered(result, [{ "a": 100, "d": "e" }]);
+
+        // filter, equals number, negative exponent
+        var data:Array<Dynamic> = [ { "a": 0.01, "d": "e" }, { "a": 0.02, "d": "f" }, { "a": "0.01", "d": "g" } ];
+        var result = JSONPath.query("$[?@.a==1e-2]", data);
+        Test.assertEqualsUnordered(result, [{ "a": 0.01, "d": "e" }]);
+
+        // filter, equals number, decimal fraction, exponent
+        var data:Array<Dynamic> = [ { "a": 110, "d": "e" }, { "a": 110.1, "d": "f" }, { "a": "110", "d": "g" } ];
+        var result = JSONPath.query("$[?@.a==1.1e2]", data);
+        Test.assertEqualsUnordered(result, [{ "a": 110, "d": "e" }]);
+
+        // filter, equals, empty node list and special nothing
+        var data:Array<Dynamic> = [ { "a": 1 }, { "b": 2 }, { "c": 3 } ];
+        var result = JSONPath.query("$[?@.a == length(@.b)]", data);
+        Test.assertEqualsUnordered(result, [ { "b": 2 }, { "c": 3 } ]);
+
+        // name selector, double quotes, escaped ☺, lower case hex
+        // TODO: Haxe does not handle non-ASCII characters in keys
+        /*
+        var data = { "☺": "A" };
+        var result = JSONPath.query("$[\"\\u263a\"]", data);
+        Test.assertEqualsUnordered(result, ["A"]);
+        */
+
+        // slice selector, excessively large step
+        var data = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ];
+        var result = JSONPath.query("$[1:10:113667776004]", data);
+        Test.assertEqualsUnordered(result, [ 1 ]);
+
+        // functions, count, count function
+        var data:Array<Dynamic> = [ { "a": [ 1, 2, 3 ] }, { "a": [ 1 ], "d": "f" }, { "a": 1, "d": "f" } ];
+        var result = JSONPath.query("$[?count(@..*)>2]", data);
+        Test.assertEqualsUnordered(result, [ { "a": [ 1, 2, 3 ] }, { "a": [ 1 ], "d": "f" } ]);
+
+        // filter, equals, special nothing
+        var data1:Array<Dynamic> = [ { "a": "ab" }, { "c": "d" }, { "a": null } ];
+        var data = { "c": "cd", "values": data1 };
+        var result = JSONPath.query("$.values[?length(@.a) == value($..c)]", data);
+        Test.assertEqualsUnordered(result, [ { "c": "d" }, { "a": null } ]);
+
+        // whitespace, slice, space between start and colon
+        var data = [1, 2, 3, 4, 5, 6];
+        var result = JSONPath.query("$[1 :5:2]", data);
+        Test.assertEqualsUnordered(result, [ 2, 4 ]);
+
+        // whitespace, operators, space between logical not and test expression
+        var data = [ { "a": "a", "d": "e" }, { "d": "f" }, { "a": "d", "d": "f" } ];
+        var result = JSONPath.query("$[?! @.a]", data);
+        Test.assertEqualsUnordered(result, [ { "d": "f" } ]);
+
+        // functions, count, single-node arg
+        var data:Array<Dynamic> = [ { "a": [ 1, 2, 3 ] }, { "a": [ 1 ], "d": "f" }, { "a": 1, "d": "f" } ];
+        var result = JSONPath.query("$[?count(@.a)>1]", data);
+        Test.assertEqualsUnordered(result, [ ]);
+
+        // functions, count, multiple-selector arg
+        var data:Array<Dynamic> = [ { "a": [ 1, 2, 3 ] }, { "a": [ 1 ], "d": "f" }, { "a": 1, "d": "f" } ];
+        var result = JSONPath.query("$[?count(@['a','d'])>1]", data);
+        Test.assertEqualsUnordered(result, [ { "a": [ 1 ], "d": "f" }, { "a": 1, "d": "f" } ]);
+
+        // functions, length, number arg
+        var data = [ { "d": "f" } ];
+        var result = JSONPath.query("$[?length(1)>=2]", data);
+        Test.assertEqualsUnordered(result, [ ]);
+
+        // functions, length, arg is a function expression
+        var data = { "c": "cd", "values": [ { "a": "ab" }, { "a": "d" } ] };
+        var result = JSONPath.query("$.values[?length(@.a)==length(value($..c))]", data);
+        Test.assertEqualsUnordered(result, [ { "a": "ab" } ]);
+            
+        // whitespace, functions, returns in an absolute singular selector
+        var data = [ { "a": "foo" }, {} ];
+        var result = JSONPath.query("$..[?length(@)==length($\r[0]\r.a)]", data);
+        Test.assertEqualsUnordered(result, [ "foo" ]);
+
+        // whitespace, operators, space between logical not and parenthesized expression
+        var data = [ { "a": "a", "d": "e" }, { "a": "b", "d": "f" }, { "a": "d", "d": "f" } ];
+        var result = JSONPath.query("$[?! (@.a=='b')]", data);
+        Test.assertEqualsUnordered(result, [ { "a": "a", "d": "e" }, { "a": "d", "d": "f" } ]);
+
+        // functions, length, true arg
+        var data = [ { "d": "f" } ];
+        var result = JSONPath.query("$[?length(true)>=2]", data);
+        Test.assertEqualsUnordered(result, [ { "d": "f" } ]);
+
+        // functions, match, found match
+        var data = [ { "a": "ab" } ];
+        var result = JSONPath.query("$[?match(@.a, 'a.*')]", data);
+        Test.assertEqualsUnordered(result, [ { "a": "ab" } ]);
+
+        // functions, match, regex from the document
+        var data1:Array<Dynamic> = [ "abc", "bcd", "bab", "bba", "bbab", "b", true, [], {} ];
+        var data = { "regex": "b.?b", "values": data1 };
+        var result = JSONPath.query("$.values[?match(@, $.regex)]", data);
+        Test.assertEqualsUnordered(result, [ "bab" ]);
+
+        // functions, match, don't select match
+        var data = [ { "a": "ab" } ];
+        var result = JSONPath.query("$[?!match(@.a, 'a.*')]", data);
+        Test.assertEqualsUnordered(result, [ ]);
+
+        // functions, search, don't select match
+        var data = [ { "a": "contains two matches" } ];
+        var result = JSONPath.query("$[?!search(@.a, 'a.*')]", data);
+        Test.assertEqualsUnordered(result, [ ]);
     }
 }
