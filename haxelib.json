@@ -1,10 +1,16 @@
 {
   "name": "jsonpath",
-  "url" : "https://github.com/EliteMasterEric/jsonpath",
+  "url": "https://github.com/EliteMasterEric/jsonpath",
   "license": "MIT",
-  "tags": ["json","data","jsonpath"],
+  "tags": [
+    "json",
+    "data",
+    "jsonpath"
+  ],
   "description": "A library for parsing and evaluating JSONPath queries on JSON data objects.",
   "version": "1.0.0",
   "releasenote": "Initial release",
-  "contributors": ["MasterEric", "larsiusprime"]
+  "contributors": [
+    "MasterEric"
+  ]
 }
