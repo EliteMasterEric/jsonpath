@@ -160,6 +160,7 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 	 */
 	public inline function keys():Array<String>
 	{
+        if (isPrimitive()) return [];
 		return isObject() ? keys_obj() : keys_arr();
 	}
 

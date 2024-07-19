@@ -29,8 +29,6 @@ class SliceUtil {
         if (start < 0) start = len + start;
         if (end < 0) end = len + end;
         
-        // trace('($len, $start, $end, $step)');
-        
         var lower:Int = (step >= 0) ? MathUtil.clampi(start, 0, len) : MathUtil.clampi(end, -1, len-1);
         var upper:Int = (step >= 0) ? MathUtil.clampi(end, 0, len) : MathUtil.clampi(start, -1, len-1);
 

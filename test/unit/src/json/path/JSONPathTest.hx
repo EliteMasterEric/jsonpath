@@ -12,6 +12,7 @@ class JSONPathTest
         testBookstore();
         testBugs();
         testErrors();
+        testHashLink();
 
         trace('JSONPathTest: Done.');
     }
@@ -573,7 +574,6 @@ class JSONPathTest
 
         // https://cburgmer.github.io/json-path-comparison/results/dot_notation_with_non_ASCII_key.html
         // TODO: Haxe does not handle non-ASCII characters in keys
-        /*
         var data:JSONData = {
             "屬性": "value"
         };
@@ -581,7 +581,6 @@ class JSONPathTest
         var result = JSONPath.query('$.屬性', data);
         Test.assertEqualsUnordered(resultPaths, ["$['屬性']"]);
         Test.assertEqualsUnordered(result, ["value"]);
-        */
 
         // https://cburgmer.github.io/json-path-comparison/results/dot_notation_with_dash.html
         var data:JSONData = {
@@ -768,14 +767,6 @@ class JSONPathTest
         var result = JSONPath.query("$[?@.a == length(@.b)]", data);
         Test.assertEqualsUnordered(result, [ { "b": 2 }, { "c": 3 } ]);
 
-        // name selector, double quotes, escaped ☺, lower case hex
-        // TODO: Haxe does not handle non-ASCII characters in keys
-        /*
-        var data = { "☺": "A" };
-        var result = JSONPath.query("$[\"\\u263a\"]", data);
-        Test.assertEqualsUnordered(result, ["A"]);
-        */
-
         // slice selector, excessively large step
         var data = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ];
         var result = JSONPath.query("$[1:10:113667776004]", data);
@@ -835,12 +826,12 @@ class JSONPathTest
         // functions, length, true arg
         var data = [ { "d": "f" } ];
         var result = JSONPath.query("$[?length(true)>=2]", data);
-        Test.assertEqualsUnordered(result, [ { "d": "f" } ]);
+        Test.assertEqualsUnordered(result, [ ]);
 
         // functions, match, found match
         var data = [ { "a": "ab" } ];
         var result = JSONPath.query("$[?match(@.a, 'a.*')]", data);
-        Test.assertEqualsUnordered(result, [ { "a": "ab" } ]);
+        Test.assertEqualsUnordered(result, [ {"a": "ab"} ]);
 
         // functions, match, regex from the document
         var data1:Array<Dynamic> = [ "abc", "bcd", "bab", "bba", "bbab", "b", true, [], {} ];
@@ -857,5 +848,56 @@ class JSONPathTest
         var data = [ { "a": "contains two matches" } ];
         var result = JSONPath.query("$[?!search(@.a, 'a.*')]", data);
         Test.assertEqualsUnordered(result, [ ]);
+
+        // whitespace, functions
+        var data:Array<Dynamic> = [ { "a": 1 }, { "b": 2 }, { "a": 2, "b": 1 } ];
+        var result = JSONPath.query("$[?count(@.*)==1]", data);
+        Test.assertEqualsUnordered(result, [{"a": 1},{"b": 2}]);
+
+        // whitespace, functions, return between arg and parenthesis
+        var data:Array<Dynamic> = [ { "a": 1 }, { "b": 2 }, { "a": 2, "b": 1 } ];
+        var result = JSONPath.query("$[?count(@.*\r)==1]", data);
+        Test.assertEqualsUnordered(result, [{"a": 1},{"b": 2}]);
+
+        // whitespace, functions, return between comma and arg
+        var data:Array<Dynamic> = [ "foo", "123" ];
+        var result = JSONPath.query("$[?search(@,\r'[a-z]+')]", data);
+        Test.assertEqualsUnordered(result, ["foo"]);
+    }
+
+    public static function testHashLink():Void {
+        // Tests only run in HashLink because HXCPP is annoying with Unicode.
+
+        #if hl
+        // name selector, double quotes, escaped ☺, upper case hex
+        var data = { "☺": "A" };
+        var result = JSONPath.query("$[\"\\u263A\"]", data);
+        Test.assertEqualsUnordered(result, ["A"]);
+
+        // name selector, double quotes, escaped ☺, lower case hex
+        var data = { "☺": "A" };
+        var result = JSONPath.query("$[\"\\u263a\"]", data);
+        Test.assertEqualsUnordered(result, ["A"]);
+
+        /*
+        // TODO: Fails because PCRE regex strings match \r on the pattern '.'
+        // functions, search, dot matcher on \\u2028
+        var data:Array<Dynamic> = [ " ", "\r \n", "\r", "\n", true, [], {} ];
+        var resultPaths = JSONPath.queryPaths("$[?search(@, '.')]", data);
+        var result = JSONPath.query("$[?search(@, '.')]", data);
+        Test.assertEqualsUnordered(resultPaths, ["$[0], $[1]"]);
+        */
+
+        /*
+        // TODO: Fails because PCRE regex strings match \r on the pattern '.'
+        // functions, match, dot matcher on \\u2028
+        var data = [ " ", "\r", "\n", true, [], {} ];
+        */
+
+        // name selector, single quotes, surrogate pair
+        var data = { "𝄞": "A" };
+        var result = JSONPath.query("$['\\uD834\\uDD1E']", data);
+        Test.assertEqualsUnordered(result, ["A"]);
+        #end       
     }
 }

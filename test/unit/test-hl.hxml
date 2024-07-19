@@ -1,0 +1,13 @@
+-cp src
+-main TestMain
+--library jsonpath
+--library thx.core
+-dce full
+--hl bin/hl/TestMain
+
+--debug
+--define hscriptPos
+--define safeMode
+--define HXCPP_CHECK_POINTER
+--define HXCPP_STACK_LINE
+--define HXCPP_STACK_TRACE

@@ -37,6 +37,10 @@ class FunctionExpression {
         var arg = arguments[0];
 
         switch(arg) {
+            case NodelistLiteral(value):
+                if (value.length == 1) return evaluateFunction_length([value[0]]);
+                //return IntegerLiteral(value.length);
+                return NothingLiteral;
             case StringLiteral(value):
                 return IntegerLiteral(value.length);
             case ArrayLiteral(value):
@@ -44,6 +48,8 @@ class FunctionExpression {
             case ObjectLiteral(value):
                 var keys = Reflect.fields(value);
                 return IntegerLiteral(keys.length);
+            case UndefinedLiteral:
+                return NothingLiteral;
             default:
                 return NothingLiteral;
         }
@@ -70,14 +76,25 @@ class FunctionExpression {
         var target = arguments[0];
         var pattern = arguments[1];
 
-        // NOTE: ENTIRITY of string must match regular expression
-
         switch (target) {
+            case NodelistLiteral(value):
+                if (value.length == 1) return evaluateFunction_match([value[0], pattern]);
+                return BooleanLiteral(false);
             case StringLiteral(value):
                 switch (pattern) {
+                    case NodelistLiteral(patternValue):
+                        if (patternValue.length == 1) return evaluateFunction_match([target, patternValue[0]]);
+                        return BooleanLiteral(false);
                     case StringLiteral(patternValue):
                         var regex = new EReg(patternValue, "g");
-                        return BooleanLiteral(regex.match(value));
+                        if (!regex.match(value)) {
+                            return BooleanLiteral(false);
+                        }
+
+                        // NOTE: ENTIRITY of string must match regular expression
+                        if (regex.matchedLeft() == "" && regex.matchedRight() == "") return BooleanLiteral(true);
+
+                        return BooleanLiteral(false);
                     default:
                         return BooleanLiteral(false);
                 }
@@ -93,14 +110,21 @@ class FunctionExpression {
         var target = arguments[0];
         var pattern = arguments[1];
 
-        // NOTE: Checks if partial string matches regular expression
-
         switch (target) {
+            case NodelistLiteral(value):
+                if (value.length == 1) return evaluateFunction_search([value[0], pattern]);
+                return BooleanLiteral(false);
             case StringLiteral(value):
                 switch (pattern) {
+                    case NodelistLiteral(patternValue):
+                        if (patternValue.length == 1) return evaluateFunction_search([target, patternValue[0]]);
+                        return BooleanLiteral(false);
                     case StringLiteral(patternValue):
                         var regex = new EReg(patternValue, "g");
-                        return BooleanLiteral(regex.match(value));
+                        // Allow for partial matches.
+                        var result = regex.match(value);
+
+                        return BooleanLiteral(result);
                     default:
                         return BooleanLiteral(false);
                 }

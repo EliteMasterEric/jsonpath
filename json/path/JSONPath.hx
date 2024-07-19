@@ -289,7 +289,7 @@ class JSONPath {
     static function queryPaths_Comparable(expression:Element, targetNode:JSONNode, rootValue:JSONData, ?asNodelist:Bool = false):PrimitiveLiteral {
         switch(expression) {
             case LogicalTestQueryExpr(element):
-                return queryPaths_Comparable(element, targetNode, rootValue);
+                return queryPaths_Comparable(element, targetNode, rootValue, asNodelist);
             case PrimitiveLiteralExpr(value):
                 return value;
             case FunctionExpressionElement(name, arguments):
@@ -300,7 +300,9 @@ class JSONPath {
                     var result = subResult.map((node) -> PrimitiveLiteralTools.fromJSONData(node.value));
                     return NodelistLiteral(result);
                 } else if (subResult.length == 1) {
-                    if (asNodelist) {
+                    if (subResult[0] == null) {
+                        return NothingLiteral;
+                    } else if (asNodelist) {
                         return NodelistLiteral([PrimitiveLiteralTools.fromJSONData(subResult[0].value)]);
                     } else {
                         return PrimitiveLiteralTools.fromJSONData(subResult[0].value);   
@@ -370,7 +372,7 @@ class JSONPath {
                 value: childValue
             };
 
-            var subResult = queryPaths_FunctionExpression_Value(name, args, childNode.value, rootValue);
+            var subResult = queryPaths_FunctionExpression_Value(name, args, childNode, rootValue);
             switch (subResult) {
                 case BooleanLiteral(value):
                     if (value) {
@@ -1060,6 +1062,8 @@ class JSONPathParser {
                             }
                             return Element.LogicalNotExpr(result);
                         }
+                    case MemberName(_):
+                        return Element.LogicalNotExpr(consumeTokens_logicalBasicExpr());
                     case Dollar:
                         return Element.LogicalNotExpr(consumeTokens_logicalBasicExpr());
                     case At:
@@ -1486,7 +1490,10 @@ class JSONPathLexer {
 
     static final HEXDIG:Array<Int> = [
         0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
-        0x41, 0x42, 0x43, 0x44, 0x45, 0x46
+        // Uppercase
+        0x41, 0x42, 0x43, 0x44, 0x45, 0x46,
+        // Lowercase
+        0x61, 0x62, 0x63, 0x64, 0x65, 0x66
     ];
 
     // The input string
@@ -1855,13 +1862,22 @@ class JSONPathLexer {
         if (hexCode == null) throw formatError_UnexpectedChar(hexStr);
 
         if (hexCode >= 0xD800 && hexCode <= 0xDBFF) {
-            // High surrogate, TODO handle this properly lol
-            throw formatError_UnsupportedUnicode(hexStr);
+            // High surrogate
+            if (peekChar() == ESCAPE && peekChar(1) == U) {
+                popChar();
+                popChar();
+                var lowChar = readToken_hexchar();
+                var lowCode = Std.parseInt(lowChar);
+                var fullValue = (hexCode - 0xD800) * 0x400 + (lowCode - 0xDC00) + 0x10000;
+                return String.fromCharCode(fullValue);
+            } else {
+                return String.fromCharCode(hexCode);
+            }
         } else if (hexCode >= 0xDC00 && hexCode <= 0xDFFF) {
-            // Low surrogate, TODO handle this properly lol
-            throw formatError_UnsupportedUnicode(hexStr);
+            // Low surrogate
+            return '${hexStr}';
         } else if (hexCode > 0xFFFF) {
-            // Unicode code point out of range, TODO handle this properly
+            // Unicode code point out of range
             throw formatError_UnsupportedUnicode(hexStr);
         } else {
             // Normal code point

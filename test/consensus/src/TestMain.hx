@@ -9,8 +9,11 @@ class TestMain {
       
         trace('===STARTING TESTS===');
 
+        #if cpp
+        // Compilation target not supported due to YAML requiring Unicode RegEx support.
+        json.path.JSONPathConsensusTest.test();
+        #end
         JSONPathComplianceTest.test();
-        // json.path.JSONPathConsensusTest.test();
 
         trace('===ALL TESTS DONE===');
     }
