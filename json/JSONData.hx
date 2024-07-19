@@ -24,9 +24,7 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 
 	public static inline function buildObject():JSONData
 	{
-		return
-		{
-		};
+		return {};
 	}
 
 	public static inline function buildArray():JSONData

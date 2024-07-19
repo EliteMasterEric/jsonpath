@@ -862,9 +862,7 @@ class JSONPathParser
 	var tokens:Array<Token>;
 	var readPos:Int = 0;
 
-	public function new()
-	{
-	}
+	public function new() {}
 
 	public function parse(path:String):Null<Element>
 	{
