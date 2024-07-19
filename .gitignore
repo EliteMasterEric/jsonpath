@@ -1,0 +1,5 @@
+*.hl
+test/bin
+
+# test dependencies
+.haxelib

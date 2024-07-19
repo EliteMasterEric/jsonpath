@@ -1,0 +1,10 @@
+{
+  "name": "jsonmerge",
+  "url" : "https://github.com/EliteMasterEric/jsonmerge",
+  "license": "MIT",
+  "tags": ["json","data"],
+  "description": "An utility library for merging and patching JSON data",
+  "version": "1.0.0",
+  "releasenote": "Initial release",
+  "contributors": ["MasterEric", "larsiusprime"]
+}
