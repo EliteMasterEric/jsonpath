@@ -1,5 +1,7 @@
 package json;
 
+import json.JSONData;
+
 class JSONDataTest
 {
 	public static function test():Void
@@ -7,6 +9,8 @@ class JSONDataTest
 		testKeys();
 
 		testBooks();
+
+		testEdit();
 
 		trace('JSONDataTest: Done.');
 	}
@@ -93,4 +97,40 @@ class JSONDataTest
 		var result = data1.getByPath("$['b']");
 		Test.assertEquals(result, 2);
 	}
+
+	public static function testEdit():Void {
+		var data:JSONData = [];
+		data.insertByPath("$['0']", 1);
+		Test.assertEquals(data, [1]);
+
+		var data:JSONData = null;
+		data.insertByPath("$['0']", 1);
+		Test.assertEquals(data, [1]);
+
+		var data:JSONData = [1, 2, 3];
+		var result = data.existsByPath("$[0]");
+		Test.assertEquals(result, true);
+
+		var data:JSONData = [1, 2, 3];
+		var result = data.copy();
+		Test.assertEquals(result, [1, 2, 3]);
+
+		var data:JSONData = {"foo": "bar"};
+		var result = data.insertByPath("$", {"baz": "qux"});
+		Test.assertEquals(result, {"baz": "qux"});
+
+		var data:JSONData = {"foo": "bar", "baz": null};
+		var result = data.get("bar", NoValue);
+		Test.assertEquals(result, NoValue);
+		var result = data.get("baz", NoValue);
+		Test.assertEquals(result, null);
+
+		var doc:JSONData = {"foo": 1, "baz": [1,2,3,4]};
+		var result = doc.getByPath("$['baz']['1e0']");
+		trace(result);
+	}
+}
+
+enum NoValue {
+	NoValue;
 }

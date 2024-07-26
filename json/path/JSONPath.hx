@@ -1,5 +1,6 @@
 package json.path;
 
+import haxe.ds.Either;
 import json.JSONData;
 import json.util.SliceUtil;
 import json.util.ArrayUtil;
@@ -642,7 +643,7 @@ class JSONPath
 	/**
 	 * Split a normalized path $['a']['b']['c'][1] into ['a', 'b', 'c', '1']
 	 */
-	public static function splitNormalizedPath(path:String):Array<String>
+	public static function splitNormalizedPath(path:String):Array<Either<String, Int>>
 	{
 		var index = 0;
 
@@ -655,7 +656,7 @@ class JSONPath
 			index++;
 		}
 
-		var result:Array<String> = [];
+		var result:Array<Either<String, Int>> = [];
 
 		while (true)
 		{
@@ -702,9 +703,11 @@ class JSONPath
 					{
 						throw npathError(path);
 					}
+					result.push(Either.Left(element));
+				} else {
+					result.push(Either.Right(Std.parseInt(element)));
 				}
 
-				result.push(element);
 				index = end + 1;
 			}
 			else
@@ -712,6 +715,19 @@ class JSONPath
 				throw npathError(path);
 			}
 		}
+	}
+
+	public static function getNormalizedPathParent(path:String):String {
+
+		var pathParts = JSONPath.splitNormalizedPath(path);
+		if (pathParts.length == 0) {
+			return '$';
+		}
+		var result = '$';
+		for (part in pathParts) {
+			result += "['" + part + "']";
+		}
+		return result;
 	}
 
 	static function npathError(path:String):String

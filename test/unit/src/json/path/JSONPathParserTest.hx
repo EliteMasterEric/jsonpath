@@ -290,5 +290,16 @@ class JSONPathParserTest
 			Element.ChildSegment([Element.NameSelector('a')]),
 			Element.DescendantSegment([Element.IndexSelector(0), Element.IndexSelector(1)])
 		]));
+
+		// Test bugs
+
+		var result = new JSONPathParser().parse('$["*"]');
+		trace(result);
+
+		// var result = new JSONPathParser().parse('$."*"');
+		// trace(result);
+
+		var result = new JSONPathParser().parse('$[foo-bar, baz]');
+		trace(result);
 	}
 }
