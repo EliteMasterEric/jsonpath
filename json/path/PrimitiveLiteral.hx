@@ -185,20 +185,29 @@ class PrimitiveLiteralTools
 			case NullLiteral:
 				switch (right)
 				{
+					case ArrayLiteral(value):
+						// return value.length == 0;
+						return false;
 					case NullLiteral:
 						return true;
 					case NothingLiteral:
 						return true;
+					case UndefinedLiteral:
+						return false;
 					default:
 						return false;
 				}
 			case UndefinedLiteral:
 				switch (right)
 				{
+					case ArrayLiteral(value):
+						return value.length == 0;
 					case UndefinedLiteral:
 						return true;
 					case NothingLiteral:
 						return true;
+					case NullLiteral:
+						return false;
 					default:
 						return false;
 				}

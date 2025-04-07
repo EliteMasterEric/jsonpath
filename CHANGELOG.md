@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Improve resolution of numeric paths targeting arrays.
 
+### Fixed
+- Fixed an issue where comparisons to `[]` would not be parsed as a comparison to an empty array.
+- Fixed an issue where `undefined == []` would resolve to false, making certain filters impossible.
+    - Ensured that comparisons between `null` and `[]` values always return false.
+    - Ensured that comparisons between `null` and `undefined` values always return false.
+
 ### Known Issues
 - A difference in handling of carriage returns in HashLink and C++ results in some tests involving regular expressions to fail.
 

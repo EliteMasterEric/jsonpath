@@ -132,6 +132,17 @@ class JSONPathParserTest
 			])
 		]));
 
+		var result = new JSONPathParser().parse("$.a[?(@.b != 'kilo')]");
+		Test.assertEquals(result, Element.JSONPathQuery([
+			Element.ChildSegment([Element.NameSelector('a')]),
+			Element.ChildSegment([
+				Element.FilterSelector(Element.LogicalOrExpr([
+					Element.LogicalComparisionExpr(Element.FilterQuery(Element.RelativeQuery([Element.ChildSegment([Element.NameSelector('b')])])), '!=',
+						Element.PrimitiveLiteralExpr(StringLiteral('kilo')))
+				]))
+			])
+		]));
+
 		var result = new JSONPathParser().parse("$.a[?@>3.5]");
 		Test.assertEquals(result, Element.JSONPathQuery([
 			Element.ChildSegment([Element.NameSelector('a')]),

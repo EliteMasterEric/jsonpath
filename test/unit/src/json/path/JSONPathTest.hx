@@ -11,6 +11,7 @@ class JSONPathTest
 		testQueryPaths();
 		testQueryNewPaths();
 		testBookstore();
+		testBookstore2();
 		testBugs();
 		testErrors();
 		testHashLink();
@@ -421,7 +422,6 @@ class JSONPathTest
 		Test.assertEqualsUnordered(resultPaths, ["$['a']['bar']"]);
 
 		// Nested object keys
-		trace('TEST CASE');
 		var data = {"a": {"foo": 1}, "b": 2, "c": 3};
 		var resultPaths = JSONPath.queryPaths("$.d.baz", data, true);
 		Test.assertEqualsUnordered(resultPaths, ["$['d']['baz']"]);
@@ -436,7 +436,8 @@ class JSONPathTest
                         "category": "reference",
                         "author": "Nigel Rees",
                         "title": "Sayings of the Century",
-                        "price": 8.95
+                        "price": 8.95,
+						"tags": ["tag1", "tag2", "tag3"]
                     },
                     {
                         "category": "fiction",
@@ -553,6 +554,10 @@ class JSONPathTest
 			"$['store']['book'][0]['category']",
 			"$['store']['book'][0]['price']",
 			"$['store']['book'][0]['author']",
+			"$['store']['book'][0]['tags']",
+			"$['store']['book'][0]['tags'][0]",
+			"$['store']['book'][0]['tags'][1]",
+			"$['store']['book'][0]['tags'][2]",
 			"$['store']['book'][1]['title']",
 			"$['store']['book'][1]['category']",
 			"$['store']['book'][1]['price']",
@@ -567,6 +572,58 @@ class JSONPathTest
 			"$['store']['book'][3]['price']",
 			"$['store']['book'][3]['author']",
 			"$['store']['book'][3]['isbn']"
+		]);
+	}
+
+	public static function testBookstore2():Void {
+		final TEST_DATA_BOOKS = '{
+		    "Books": {
+		        "History": [
+		            {
+		                "badge": "y",
+		                "Tags": [
+		                    "Indian",
+		                    "Culture"
+		                ],
+		                "ISBN": "xxxxxxx",
+		                "id": 1,
+		                "name": "Cultures in India"
+		            },
+		            {
+		                "badge": "y",
+		                "Tags": [
+		                    "Pre-historic",
+		                    "Creatures"
+		                ],
+		                "ISBN": "xxxxxxx",
+		                "id": 1,
+		                "name": "Pre-historic Ages"
+		            }
+		        ]
+		    }
+		}';
+
+		var books = JSONData.parse(TEST_DATA_BOOKS);
+
+		// Filter to tags which are equal to "Indian"
+		var resultPaths = JSONPath.queryPaths("$.Books.History.*.Tags[?(@ == 'Indian')]", books);
+		Test.assertEqualsUnordered(resultPaths, ["$['Books']['History'][0]['Tags'][0]" ]);
+
+		// Filter to books which contain the tag "Indian"
+		var resultPaths = JSONPath.queryPaths("$.Books.History[?(@.Tags[?(@ == 'Indian')] != [])]", books);
+		Test.assertEqualsUnordered(resultPaths, ["$['Books']['History'][0]"]);
+		var result = JSONPath.query("$.Books.History[?(@.Tags[?(@ == 'Indian')] != [])]", books);
+		Test.assertEqualsUnordered(result, [
+			{
+				"badge": "y",
+				"Tags": [
+					"Indian",
+					"Culture"
+				],
+				"ISBN": "xxxxxxx",
+				"id": 1,
+				"name": "Cultures in India"
+			}
 		]);
 	}
 

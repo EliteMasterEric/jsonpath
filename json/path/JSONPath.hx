@@ -1451,6 +1451,9 @@ class JSONPathParser
 			case StringLiteral(value): // String
 				var token = popToken();
 				return Element.PrimitiveLiteralExpr(StringLiteral(value));
+			case Brackets(values):
+				var token = popToken();
+				return Element.PrimitiveLiteralExpr(ArrayLiteral(values));
 			case MemberName(value):
 				switch (value)
 				{
