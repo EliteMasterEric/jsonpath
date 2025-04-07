@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2025-04-07
 ### Added
 - Added an optional `allowNewPaths` argument to `JSONPaths.queryPaths()`, which allows for name and index selectors to be resolved even if the element does not exist. This is useful when determining paths for operations which add new elements to the JSON data.
+- Added a new compilation flag `jsonpath_bonus` which enables additional functionality not part of the current standard.
+- (`jsonpath_bonus` only) Added a new `indexOf()` function which takes an array and a literal, and returns the index of that literal.
 
 ### Changed
 - Improve resolution of numeric paths targeting arrays.
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed an issue where `undefined == []` would resolve to false, making certain filters impossible.
     - Ensured that comparisons between `null` and `[]` values always return false.
     - Ensured that comparisons between `null` and `undefined` values always return false.
+- Fixed an issue where `count()` would return Nothing instead of 0 when passed an invalid input.
 
 ### Known Issues
 - A difference in handling of carriage returns in HashLink and C++ results in some tests involving regular expressions to fail.

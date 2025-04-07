@@ -388,18 +388,43 @@ class JSONPath
 
 	static function queryPaths_FunctionExpression_Value(name:String, arguments:Array<Element>, targetNode:JSONNode, rootValue:JSONData):PrimitiveLiteral
 	{
-		var parsedArgs:Array<PrimitiveLiteral> = [];
-		for (arg in arguments)
-		{
-			parsedArgs.push(queryPaths_Comparable(arg, targetNode, rootValue, true));
-		}
+		if (NodeFunctionExpression.isValidNodeFunctionExpression(name)) {
+			var parsedArgs:Array<JSONNode> = [];
+			for (arg in arguments) {
+				var parsedArg = queryPaths_NodeFunctionArg(arg, rootValue, true);
+				if (parsedArg != null) parsedArgs.push(parsedArg);
+			}
 
-		if (!FunctionExpression.isValidFunctionExpression(name))
+			return NodeFunctionExpression.evaluateFunction(name, parsedArgs);
+		} else if (FunctionExpression.isValidFunctionExpression(name)) {
+			var parsedArgs:Array<PrimitiveLiteral> = [];
+			for (arg in arguments)
+			{
+				parsedArgs.push(queryPaths_Comparable(arg, targetNode, rootValue, true));
+			}
+			return FunctionExpression.evaluateFunction(name, parsedArgs);
+		} else
 		{
 			throw 'Unknown function: ${name}';
 		}
+	}
 
-		return FunctionExpression.evaluateFunction(name, parsedArgs);
+	static function queryPaths_NodeFunctionArg(expression:Element, targetNode:JSONNode, rootValue:JSONData):Null<JSONNode> {
+		switch (expression)
+		{
+			case FilterQuery(value):
+				var subResult = queryPaths_ValueFilterQuery(value, targetNode, rootValue);
+				if (subResult.length == 1) {
+					return subResult[0];
+				} else if (subResult.length > 1) {
+					// TODO: Decide good behavior for this!!!!!
+				} else {
+					return null;
+				}
+
+			default:
+				throw pathError_unexpectedElement(expression);
+		}
 	}
 
 	/**
@@ -1344,6 +1369,9 @@ class JSONPathParser
 								var token = popToken();
 								result.push(Element.FunctionExpressionElement(value, consumeTokens_FunctionExpression()));
 							}
+							#if jsonpath_bonus
+							else if (ElementFunctionExpression.isValidElementFunctionExpression(value))
+							#end
 							else
 							{
 								throw parserError_unexpectedToken(peekToken());

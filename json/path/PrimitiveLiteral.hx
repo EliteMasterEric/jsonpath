@@ -93,6 +93,7 @@ class PrimitiveLiteralTools
 
 	static function compare_equal(left:PrimitiveLiteral, right:PrimitiveLiteral):Bool
 	{
+		trace('Compare: ${left} == ${right}');
 		switch (left)
 		{
 			case ObjectLiteral(value):
@@ -356,6 +357,7 @@ class PrimitiveLiteralTools
 
 	static function compare_notEqual(left:PrimitiveLiteral, right:PrimitiveLiteral):Bool
 	{
+		trace('Compare: ${left} != ${right}');
 		return !compare_equal(left, right);
 	}
 }

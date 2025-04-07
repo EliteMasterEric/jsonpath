@@ -1,11 +1,21 @@
 package json.path;
 
+import json.path.PrimitiveLiteral.PrimitiveLiteralTools;
+
 class FunctionExpression
 {
 	static final VALID_FUNCTIONS:Array<String> = ["length", "count", "match", "search", "value"];
 
+	#if jsonpath_bonus
+	static final VALID_FUNCTIONS_BONUS:Array<String> = ["indexOf"];
+	#end
+
 	public static function isValidFunctionExpression(name:String):Bool
 	{
+		// Allow bonus functions if they are enabled
+		#if jsonpath_bonus
+		if (VALID_FUNCTIONS_BONUS.indexOf(name) != -1) return true;
+		#end
 		return VALID_FUNCTIONS.indexOf(name) != -1;
 	}
 
@@ -23,6 +33,10 @@ class FunctionExpression
 				return evaluateFunction_search(arguments);
 			case "value":
 				return evaluateFunction_value(arguments);
+			#if jsonpath_bonus
+			case "indexOf":
+				return evaluateFunction_indexOf(arguments);
+			#end
 			default:
 				throw 'Unknown function: ${name}';
 		}
@@ -72,7 +86,7 @@ class FunctionExpression
 			case NodelistLiteral(value):
 				return IntegerLiteral(value.length);
 			default:
-				return NothingLiteral;
+				return IntegerLiteral(0);
 		}
 	}
 
@@ -193,4 +207,36 @@ class FunctionExpression
 				return NothingLiteral;
 		}
 	}
+
+	#if jsonpath_bonus
+	static function evaluateFunction_indexOf(arguments:Array<PrimitiveLiteral>):PrimitiveLiteral {
+		if (arguments.length <= 1)
+			throw 'Too few arguments for indexOf(): ${arguments.length}';
+		if (arguments.length >= 3)
+			throw 'Too many arguments for indexOf(): ${arguments.length}';
+
+		var list = arguments[0];
+		var value = arguments[1];
+
+		trace('indexOf(${list}, ${value})');
+
+		switch (list)
+		{
+			case NodelistLiteral(list):
+				if (list.length == 1)
+					return evaluateFunction_indexOf([list[0], value]);
+				return IntegerLiteral(-1);
+			case ArrayLiteral(list):
+				for (i in 0...list.length) {
+					var listElement = PrimitiveLiteralTools.fromJSONData(list[i]);
+					if (PrimitiveLiteralTools.compare(listElement, "==", value)) {
+						return IntegerLiteral(i);
+					}
+				}
+				return IntegerLiteral(-1);
+			default:
+				return NothingLiteral;
+		}
+	}
+	#end
 }

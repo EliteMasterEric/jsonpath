@@ -18,6 +18,12 @@ trace(JSONPath.queryPaths(query, data));
 trace(JSONPath.query(query, data))
 ```
 
+## Bonus Functionality
+
+Several features of the parser are not compliant with the specification. This functionality can be enabled by using the `jsonpath_bonus` compilation flag.
+
+- The `indexOf(array, value)` function returns the position if the given array contains the given value, `-1` if it does not, or Nothing if the input is not a valid array.
+
 ## Licensing
 
 JSONPath is made available under an open source MIT License. You can read more at [LICENSE](LICENSE.md).

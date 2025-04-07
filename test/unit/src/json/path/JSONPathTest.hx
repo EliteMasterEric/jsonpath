@@ -8,13 +8,14 @@ class JSONPathTest
 {
 	public static function test():Void
 	{
-		testQueryPaths();
-		testQueryNewPaths();
-		testBookstore();
-		testBookstore2();
-		testBugs();
-		testErrors();
-		testHashLink();
+		//testQueryPaths();
+		//testQueryNewPaths();
+		//testBookstore();
+		//testBookstore2();
+		testFunkin();
+		//testBugs();
+		//testErrors();
+		//testHashLink();
 
 		trace('JSONPathTest: Done.');
 	}
@@ -625,6 +626,73 @@ class JSONPathTest
 				"name": "Cultures in India"
 			}
 		]);
+	}
+
+	/**
+	 * Test using a real test case from modding Friday Night Funkin'.
+	 */
+	public static function testFunkin():Void {
+        final TEST_DATA_FUNKIN = '{
+		  "version": "1.0.0",
+		  "songName": "DadBattle",
+		  "artist": "Kawai Sprite",
+		  "charter": "ninjamuffin99 + MtH",
+		  "timeFormat": "ms",
+		  "timeChanges": [{ "t": 0, "bpm": 180, "n": 4, "d": 4, "bt": [4, 4, 4, 4] }],
+		  "playData": {
+		    "ratings": { "easy": 1, "normal": 1, "hard": 2 },
+		    "songVariations": ["erect", "pico"],
+		    "difficulties": ["easy", "normal", "hard"],
+		    "characters": {
+		      "player": "bf",
+		      "girlfriend": "gf",
+		      "opponent": "dad",
+		      "altInstrumentals": ["pico"]
+		    },
+		    "stage": "mainStage",
+		    "noteStyle": "funkin",
+		    "album": "volume1",
+		    "previewStart": 0,
+		    "previewEnd": 15000
+		  },
+		  "generatedBy": "EliteMasterEric"
+		}';
+
+		final TEST_DATA_FUNKIN_NOALTS = '{
+			"version": "1.0.0",
+			"songName": "DadBattle",
+			"artist": "Kawai Sprite",
+			"charter": "ninjamuffin99 + MtH",
+			"timeFormat": "ms",
+			"timeChanges": [{ "t": 0, "bpm": 180, "n": 4, "d": 4, "bt": [4, 4, 4, 4] }],
+			"playData": {
+			  "ratings": { "easy": 1, "normal": 1, "hard": 2 },
+			  "difficulties": ["easy", "normal", "hard"],
+			  "characters": {
+				"player": "bf",
+				"girlfriend": "gf",
+				"opponent": "dad"
+			  },
+			  "stage": "mainStage",
+			  "noteStyle": "funkin",
+			  "album": "volume1",
+			  "previewStart": 0,
+			  "previewEnd": 15000
+			},
+			"generatedBy": "EliteMasterEric"
+		  }';
+		
+		var data = JSONData.parse(TEST_DATA_FUNKIN);
+		var data2 = JSONData.parse(TEST_DATA_FUNKIN_NOALTS);
+
+		trace('TEST CASE');
+		// var resultPaths = JSONPath.queryPaths("$.playData[?(@.songVariations[?(@ == 'pico')] != [])]", data);
+
+		//var resultPaths = JSONPath.queryPaths("$[?(@.songVariations[?(@ == 'pico')] == [])]", data);
+		var resultPaths = JSONPath.queryPaths("$[?1 == indexOf(@.songVariations, 'pico')]", data);
+		trace(resultPaths);
+
+		
 	}
 
 	public static function testBugs():Void
