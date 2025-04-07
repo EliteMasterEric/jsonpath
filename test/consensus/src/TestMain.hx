@@ -14,6 +14,8 @@ class TestMain
 		#if cpp
 		// Compilation target not supported due to YAML requiring Unicode RegEx support.
 		json.path.JSONPathConsensusTest.test();
+		#else
+		trace('[WARNING] Not executing consensus tests, no YAML support on build target.');
 		#end
 		JSONPathComplianceTest.test();
 

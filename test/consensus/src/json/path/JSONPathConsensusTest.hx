@@ -78,7 +78,7 @@ class JSONPathConsensusTest
 			}
 		}
 
-		trace('===RESULTS===');
+		trace('===(Supported) RESULTS===');
 		trace('Successes: ${successes}');
 		trace('Failures: ${failures}');
 		trace('Errors: ${errors}');
@@ -108,7 +108,7 @@ class JSONPathConsensusTest
 			}
 		}
 
-		trace('===RESULTS===');
+		trace('===(No Consensus) RESULTS===');
 		trace('Successes: ${successes}');
 		trace('Errors: ${errors}');
 	}
@@ -141,7 +141,7 @@ class JSONPathConsensusTest
 			}
 		}
 
-		trace('===RESULTS===');
+		trace('===(Unsupported) RESULTS===');
 		trace('Successes: ${successes}');
 		trace('Failures: ${failures}');
 		trace('Errors: ${errors}');

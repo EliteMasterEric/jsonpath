@@ -1,8 +1,8 @@
 package json;
 
-import haxe.ds.Either;
-import haxe.io.StringInput;
 import json.path.JSONPath;
+import json.path.JSONPath.PathPart;
+import json.path.JSONPath.PathParts;
 import json.util.TypeUtil;
 
 /**
@@ -75,16 +75,16 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 	}
 
 	function getDataByPart(part:PathPart):Null<JSONData> {
-		switch (part) {
-			case Left(v):
-				if (isArray()) {
-					// Strings that aren't parsed as numbers are invalid
-					throw 'get(): bad array index: ${v}';
-				} else {
-					return get(v);
-				}
-			case Right(v):
-				return this[v];
+		if (part.isString()) {
+			if (isArray()) {
+				// This is an array, so we should fetch by index,
+				// but we got a string! That's not allowed.
+				throw 'get(): bad array index: ${part.toString()}';
+			} else {
+				return get(part.toString());
+			}
+		} else {
+			return this[part.toInt()];
 		}
 	}
 
@@ -108,7 +108,8 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 		{
 			if (pathParts.length == 1)
 				return element;
-			throw 'K:/${pathParts[0]}';
+
+			throw 'K:/${pathParts[0].toString()}';
 		}
 		try
 		{
@@ -116,7 +117,7 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 		}
 		catch (e)
 		{
-			throw 'K:/${pathParts[0]}${'$e'.substr(1)}';
+			throw '[/${pathParts[0].toString()}] ${'$e'}';
 		}
 	}
 
@@ -202,16 +203,16 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 
 	function setDataByPart(part:PathPart, value:Dynamic):Dynamic
 	{
-		switch (part) {
-			case Left(v):
-				if (isArray()) {
-					// Strings that aren't parsed as numbers are invalid
-					throw 'set(): bad array index: ${v}';
-				} else {
-					return set(v, value);
-				}
-			case Right(v):
-				return this[v] = value;
+		if (part.isString()) {
+			if (isArray()) {
+				// This is an array, so we should set by index,
+				// but we got a string! That's not allowed.
+				throw 'set(): bad array index: ${part.toString()}';
+			} else {
+				return set(part.toString(), value);
+			}
+		} else {
+			return this[part.toInt()] = value;
 		}
 	}
 
@@ -253,21 +254,21 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 
 	inline function insertByPart(part:PathPart, value:Dynamic, strict:Bool = false):Dynamic
 	{
-		switch (part) {
-			case Left(v):
-				if (isArray()) {
-					// See RFC 6901
-					if (v == '-') {
-						return insert_arr('-', value, strict);
-					} else {
-						// Strings that aren't parsed as numbers are invalid
-						throw 'insert(): bad array index: ${v}';
-					}
+		if (part.isString()) {
+			if (isArray()) {
+				// `-` inserts into the end of the array, see RFC 6901
+				if (part.toString() == '-') {
+					return insert_arr('-', value, strict);
 				} else {
-					return insert(v, value, strict);
+					// This is an array, so we should insert by index,
+					// but we got a string! That's not allowed.
+					throw 'insert(): bad array index: ${part.toString()}';
 				}
-			case Right(v):
-				return insert('$v', value, strict);
+			} else {
+				return insert(part.toString(), value, strict);
+			}
+		} else {
+			return insert(part.toString(), value, strict);
 		}
 	}
 
@@ -350,16 +351,16 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 
 	function existsByPart(part:PathPart):Bool
 	{
-		switch (part) {
-			case Left(v):
-				if (isArray()) {
-					// Strings that aren't parsed as numbers are invalid
-					throw 'exists(): bad array index: ${v}';
-				} else {
-					return exists(v);
-				}
-			case Right(v):
-				return exists('$v');
+		if (part.isString()) {
+			if (isArray()) {
+				// This is an array, so we should query by index,
+				// but we got a string! That's not allowed.
+				throw 'exists(): bad array index: ${part.toString()}';
+			} else {
+				return exists(part.toString());
+			}
+		} else {
+			return exists(part.toString());
 		}
 	}
 
@@ -416,18 +417,16 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 	}
 
 	function removeDataByPart(part:PathPart):Dynamic {
-		switch (part) {
-			case Left(v):
-				if (isArray()) {
-					// Strings that aren't parsed as numbers are invalid
-					throw 'remove(): bad array index: ${v}';
-				} else {
-					return remove(v);
-				}
-			case Right(v):
-				return remove('$v');
-			default:
-				throw 'bad path part: ${part}';
+		if (part.isString()) {
+			if (isArray()) {
+				// This is an array, so we should remove by index,
+				// but we got a string! That's not allowed.
+				throw 'remove(): bad array index: ${part.toString()}';
+			} else {
+				return remove(part.toString());
+			}
+		} else {
+			return remove(part.toString());
 		}
 	}
 
@@ -519,6 +518,3 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 		return !TypeUtil.isArray(this);
 	}
 }
-
-typedef PathPart = Either<String, Int>;
-typedef PathParts = Array<PathPart>;

@@ -294,12 +294,12 @@ class JSONPathParserTest
 		// Test bugs
 
 		var result = new JSONPathParser().parse('$["*"]');
-		trace(result);
+		// trace(result);
 
 		// var result = new JSONPathParser().parse('$."*"');
 		// trace(result);
 
 		var result = new JSONPathParser().parse('$[foo-bar, baz]');
-		trace(result);
+		// trace(result);
 	}
 }

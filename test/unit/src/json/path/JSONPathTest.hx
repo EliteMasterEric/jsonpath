@@ -8,7 +8,6 @@ class JSONPathTest
 {
 	public static function test():Void
 	{
-		testNormalizedPath();
 		testQueryPaths();
 		testBookstore();
 		testBugs();
@@ -16,21 +15,6 @@ class JSONPathTest
 		testHashLink();
 
 		trace('JSONPathTest: Done.');
-	}
-
-	public static function testNormalizedPath():Void
-	{
-		var result = JSONPath.splitNormalizedPath("$");
-		Test.assertEqualsUnordered(result, []);
-
-		var result = JSONPath.splitNormalizedPath("$[0]");
-		Test.assertEqualsUnordered(result, ['0']);
-
-		var result = JSONPath.splitNormalizedPath("$[0]['k']");
-		Test.assertEqualsUnordered(result, ['0', 'k']);
-
-		var result = JSONPath.splitNormalizedPath("$['k'][0]['l']");
-		Test.assertEqualsUnordered(result, ['k', '0', 'l']);
 	}
 
 	public static function testQueryPaths():Void
@@ -641,6 +625,9 @@ class JSONPathTest
 		Test.assertEqualsUnordered(result, ["value"]);
 	}
 
+	/**
+	 * Test using data from the `consensus` test suite.
+	 */
 	public static function testErrors():Void
 	{
 		// https://cburgmer.github.io/json-path-comparison/results/current_with_dot_notation.html
@@ -911,6 +898,11 @@ class JSONPathTest
 		var data:Array<Dynamic> = ["foo", "123"];
 		var result = JSONPath.query("$[?search(@,\r'[a-z]+')]", data);
 		Test.assertEqualsUnordered(result, ["foo"]);
+
+		// filter, equals number, exponent upper e
+		var data:Array<Dynamic> = [{ "a": 100, "d": "e" }, { "a": 100.1, "d": "f" }, { "a": "100", "d": "g" }];
+		var result = JSONPath.query("$[?@.a==1E2]", data);
+		Test.assertEqualsUnordered(result, [{ "a": 100, "d": "e" }]);
 	}
 
 	public static function testHashLink():Void
@@ -931,15 +923,16 @@ class JSONPathTest
 		/*
 			// TODO: Fails because PCRE regex strings match \r on the pattern '.'
 			// functions, search, dot matcher on \\u2028
-			var data:Array<Dynamic> = [ " ", "\r \n", "\r", "\n", true, [], {} ];
+			var data:Array<Dynamic> = [ "", "\r\n", "\r", "\n", true, [], {} ];
 			var resultPaths = JSONPath.queryPaths("$[?search(@, '.')]", data);
 			var result = JSONPath.query("$[?search(@, '.')]", data);
 			Test.assertEqualsUnordered(resultPaths, ["$[0], $[1]"]);
 		 */
+
 		/*
 			// TODO: Fails because PCRE regex strings match \r on the pattern '.'
 			// functions, match, dot matcher on \\u2028
-			var data = [ " ", "\r", "\n", true, [], {} ];
+			var data = [ "", "\r", "\n", true, [], {} ];
 		 */
 
 		// name selector, single quotes, surrogate pair

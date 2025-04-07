@@ -14,6 +14,8 @@ class TestMain
 
 		json.util.SliceUtilTest.test();
 
+		json.path.JSONPathSplitTest.test();
+
 		json.JSONDataTest.test();
 
 		json.path.JSONPathLexerTest.test();

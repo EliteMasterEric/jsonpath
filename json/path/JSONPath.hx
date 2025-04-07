@@ -642,8 +642,9 @@ class JSONPath
 
 	/**
 	 * Split a normalized path $['a']['b']['c'][1] into ['a', 'b', 'c', '1']
+	 * @returns An array of path parts, either string identifiers or integer array indices
 	 */
-	public static function splitNormalizedPath(path:String):Array<Either<String, Int>>
+	public static function splitNormalizedPath(path:String):PathParts
 	{
 		var index = 0;
 
@@ -656,7 +657,7 @@ class JSONPath
 			index++;
 		}
 
-		var result:Array<Either<String, Int>> = [];
+		var result:PathParts = [];
 
 		while (true)
 		{
@@ -2039,9 +2040,9 @@ class JSONPathLexer
 
 		var isFloat = false;
 		var char = peekChar();
-		while (!eof() && (isDigit(char) || char == MINUS || char == PERIOD || char == E || char == PLUS))
+		while (!eof() && (isDigit(char) || char == MINUS || char == PERIOD || char == E || char == E_U || char == PLUS))
 		{
-			if (char == PERIOD || char == E || char == PLUS)
+			if (char == PERIOD || char == E || char == E_U || char == PLUS)
 				isFloat = true;
 			result += readToken_unescaped(false);
 			char = peekChar();
@@ -2310,5 +2311,39 @@ class JSONPathLexer
 	#if !debug inline #end function formatError_UnsupportedUnicode(hexStr:String):String
 	{
 		return 'Unsupported Unicode at pos ${readPos + 1}: ${hexStr}';
+	}
+}
+
+typedef PathParts = Array<PathPart>;
+typedef RawPathPart = Either<String, Int>;
+
+
+enum abstract PathPart(RawPathPart) from RawPathPart to RawPathPart {
+	public function isString():Bool {
+		switch (this) {
+			case Left(v): return true;
+			case Right(v): return false;
+		}
+	}
+
+	public function isInt():Bool {
+		switch (this) {
+			case Left(v): return false;
+			case Right(v): return true;
+		}
+	}
+
+	public function toString():String {
+		switch (this) {
+			case Left(v): return '$v';
+			case Right(v): return '$v';
+		}
+	}
+
+	public function toInt():Int {
+		switch (this) {
+			case Left(v): return -1;
+			case Right(v): return v;
+		}
 	}
 }

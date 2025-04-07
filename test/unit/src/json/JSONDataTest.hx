@@ -4,17 +4,26 @@ import json.JSONData;
 
 class JSONDataTest
 {
+	/**
+	 * Performs all tests.
+	 * Each test will attempt operations, and throw an error if they fail or give a bad result.
+	 */
 	public static function test():Void
 	{
 		testKeys();
 
 		testBooks();
 
-		testEdit();
+		testGetByPath();
+		testEditByPath();
 
 		trace('JSONDataTest: Done.');
 	}
 
+	/**
+	 * Tests the keys() method to ensure that proper results are returned,
+	 * for both objects and arrays.
+	 */
 	public static function testKeys():Void
 	{
 		final TEST_DATA_1:String = '{ "a": 1, "b": 2 }';
@@ -38,6 +47,9 @@ class JSONDataTest
 		Test.assertNotEqualsUnordered(result3Keys, [0, 1, 2]);
 	}
 
+	/**
+	 * Test parsing a larger JSON example, and ensure the results are correct.
+	 */
 	public static function testBooks():Void
 	{
 		final TEST_DATA_BOOKS:String = '{
@@ -85,7 +97,10 @@ class JSONDataTest
 		Test.assertEqualsUnordered(booksKeys, ['expensive', 'store']);
 	}
 
-	public static function testNormalizedPath():Void
+	/**
+	 * Test using `getByPath()` to retrieve data from a JSON object.
+	 */
+	public static function testGetByPath():Void
 	{
 		final TEST_DATA_1:String = '{ "a": 1, "b": 2 }';
 
@@ -98,14 +113,21 @@ class JSONDataTest
 		Test.assertEquals(result, 2);
 	}
 
-	public static function testEdit():Void {
+	/**
+	 * Test using `insertByPath()` to insert data into a `JSONData` object.
+	 */
+	public static function testEditByPath():Void {
+		// Insert at index 0 into an array.
 		var data:JSONData = [];
-		data.insertByPath("$['0']", 1);
+		data.insertByPath("$[0]", 1);
 		Test.assertEquals(data, [1]);
 
-		var data:JSONData = null;
-		data.insertByPath("$['0']", 1);
-		Test.assertEquals(data, [1]);
+		// Allow numeric indices but not string indices, even if the string is a valid number.
+		Test.assertError(() ->
+		{
+			var data:JSONData = [];
+			data.insertByPath("$['0']", 1);
+		}, 'insert(): bad array index: 0');
 
 		var data:JSONData = [1, 2, 3];
 		var result = data.existsByPath("$[0]");
@@ -122,12 +144,17 @@ class JSONDataTest
 		var data:JSONData = {"foo": "bar", "baz": null};
 		var result = data.get("bar", NoValue);
 		Test.assertEquals(result, NoValue);
+
 		var result = data.get("baz", NoValue);
 		Test.assertEquals(result, null);
 
-		var doc:JSONData = {"foo": 1, "baz": [1,2,3,4]};
-		var result = doc.getByPath("$['baz']['1e0']");
-		trace(result);
+		// Allow numeric indices but not string indices, even if the string is a valid number.
+		Test.assertError(() ->
+		{
+			var doc:JSONData = {"foo": 1, "baz": [1,2,3,4]};
+			var result = doc.getByPath("$['baz']['1e0']");
+			trace(result);
+		}, '[/baz] get(): bad array index: 1e0');
 	}
 }
 

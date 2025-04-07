@@ -18,13 +18,6 @@ trace(JSONPath.queryPaths(query, data));
 trace(JSONPath.query(query, data))
 ```
 
-## JSONPatch
-
-https://github.com/json-patch/json-patch2/issues?page=2&q=is%3Aissue+is%3Aopen
-https://datatracker.ietf.org/doc/rfc6901/
-https://datatracker.ietf.org/doc/rfc6902/
-https://github.com/danielaparker/JsonCons.Net
-
 ## Licensing
 
 JSONPath is made available under an open source MIT License. You can read more at [LICENSE](LICENSE.md).
