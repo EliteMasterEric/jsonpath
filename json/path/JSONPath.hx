@@ -21,13 +21,13 @@ class JSONPath
 	 * and provides the query result as a list of JSON values that were located.
 	 * @param path 
 	 * @param value 
-	 * @return Array<String>
+	 * @return A list of JSON data values.
 	 */
 	public static function query(path:String, value:JSONData):Array<JSONData>
 	{
 		var element = new JSONPathParser().parse(path);
 
-		var nodelist = queryPaths_Element(element, value);
+		var nodelist = queryPaths_Element(element, value, false);
 
 		return mapNodelistValues(nodelist);
 	}
@@ -35,18 +35,20 @@ class JSONPath
 	/**
 	 * Performs the provided JSONPath query on the query argument,
 	 * and provides the query result as a list of normalized paths into the query argument.
-	 * @param path 
-	 * @param value 
-	 * @return Array<String>
+	 * @param path The JSONPath query to perform
+	 * @param value The value to query
+	 * @param allowNewPaths Whether to create new paths for non-filter selectors
+	 *   For example, `$.a.b` will return `$['a']['b']` even if `a` or `b` do not exist.
+	 * @return A list of JSON normalized paths.
 	 */
-	public static function queryPaths(path:String, value:JSONData):Array<String>
+	public static function queryPaths(path:String, value:JSONData, allowNewPaths:Bool = false):Array<String>
 	{
 		var element = new JSONPathParser().parse(path);
 
 		switch (element)
 		{
 			case Element.JSONPathQuery(segments):
-				var nodelist = queryPaths_Element(element, value);
+				var nodelist = queryPaths_Element(element, value, allowNewPaths);
 				return mapNodelistPaths(nodelist);
 			default:
 				throw pathError_noRootIdentifier(element);
@@ -69,7 +71,7 @@ class JSONPath
 		});
 	}
 
-	static function queryPaths_Element(element:Element, rootValue:JSONData):Array<JSONNode>
+	static function queryPaths_Element(element:Element, rootValue:JSONData, allowNewPaths:Bool):Array<JSONNode>
 	{
 		switch (element)
 		{
@@ -86,9 +88,9 @@ class JSONPath
 					switch (segment)
 					{
 						case ChildSegment(selectors):
-							nodeList = queryPaths_ChildSegment(selectors, nodeList, rootValue);
+							nodeList = queryPaths_ChildSegment(selectors, nodeList, rootValue, allowNewPaths);
 						case DescendantSegment(selectors):
-							nodeList = queryPaths_DescendantSegment(selectors, nodeList, rootValue);
+							nodeList = queryPaths_DescendantSegment(selectors, nodeList, rootValue, allowNewPaths);
 						default:
 							throw pathError_unexpectedElement(segment);
 					}
@@ -108,9 +110,9 @@ class JSONPath
 					switch (segment)
 					{
 						case ChildSegment(selectors):
-							nodeList = queryPaths_ChildSegment(selectors, nodeList, rootValue);
+							nodeList = queryPaths_ChildSegment(selectors, nodeList, rootValue, allowNewPaths);
 						case DescendantSegment(selectors):
-							nodeList = queryPaths_DescendantSegment(selectors, nodeList, rootValue);
+							nodeList = queryPaths_DescendantSegment(selectors, nodeList, rootValue, allowNewPaths);
 						default:
 							throw pathError_unexpectedElement(segment);
 					}
@@ -122,20 +124,20 @@ class JSONPath
 		}
 	}
 
-	static function queryPaths_ElementQuery(element:Element, targetValue:JSONData, rootValue:JSONData):Array<JSONNode>
+	static function queryPaths_ElementQuery(element:Element, targetValue:JSONData, rootValue:JSONData, allowNewPaths:Bool):Array<JSONNode>
 	{
 		switch (element)
 		{
 			case Element.JSONPathQuery(_):
-				return queryPaths_Element(element, rootValue);
+				return queryPaths_Element(element, rootValue, allowNewPaths);
 			case Element.RelativeQuery(_):
-				return queryPaths_Element(element, targetValue);
+				return queryPaths_Element(element, targetValue, allowNewPaths);
 			default:
 				throw 'Expected relative or absolute query, got ${element}';
 		}
 	}
 
-	static function queryPaths_ChildSegment(selectors:Array<Element>, nodeList:Array<JSONNode>, rootValue:JSONData):Array<JSONNode>
+	static function queryPaths_ChildSegment(selectors:Array<Element>, nodeList:Array<JSONNode>, rootValue:JSONData, allowNewPaths:Bool):Array<JSONNode>
 	{
 		var result:Array<JSONNode> = [];
 
@@ -146,11 +148,11 @@ class JSONPath
 				case NameSelector(name):
 					for (node in nodeList)
 					{
-						if (node.value == null)
-							continue;
 						if (node.value.isArray())
 							continue;
-						if (!node.value.exists(name))
+						if (!allowNewPaths && node.value == null)
+							continue;
+						if (!allowNewPaths && !node.value.exists(name))
 							continue;
 
 						var newPath = node.path + "['" + name + "']";
@@ -164,13 +166,14 @@ class JSONPath
 					{
 						if (!node.value.isArray())
 							continue;
+
 						if (index < 0)
 							index = node.value.length() + index;
 						// Index out of bounds, provide no result.
-						if (index < 0 || index >= node.value.length())
+						if (index < 0 || (index >= node.value.length() && !allowNewPaths))
 							continue;
 
-						if (!node.value.exists('$index'))
+						if (!allowNewPaths && !node.value.exists('$index'))
 							continue;
 						var newPath = node.path + "[" + index + "]";
 						result.push({
@@ -419,7 +422,7 @@ class JSONPath
 				value: childValue
 			};
 
-			var subResult = queryPaths_ElementQuery(subquery, childNode.value, rootValue);
+			var subResult = queryPaths_ElementQuery(subquery, childNode.value, rootValue, false);
 			if (subResult.length > 0)
 			{
 				results.push(childNode);
@@ -476,13 +479,13 @@ class JSONPath
 
 		var results:Array<JSONNode> = [];
 
-		var subResult = queryPaths_ElementQuery(subquery, targetNode.value, rootValue);
+		var subResult = queryPaths_ElementQuery(subquery, targetNode.value, rootValue, false);
 		results = results.concat(subResult);
 
 		return results;
 	}
 
-	static function queryPaths_DescendantSegment(selectors:Array<Element>, nodeList:Array<JSONNode>, rootValue:JSONData):Array<JSONNode>
+	static function queryPaths_DescendantSegment(selectors:Array<Element>, nodeList:Array<JSONNode>, rootValue:JSONData, allowNewPaths:Bool):Array<JSONNode>
 	{
 		var result:Array<JSONNode> = [];
 

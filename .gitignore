@@ -1,4 +1,5 @@
 *.hl
+*.sln
 test/unit/bin
 test/consensus/bin
 

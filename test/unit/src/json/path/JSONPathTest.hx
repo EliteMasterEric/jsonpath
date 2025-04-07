@@ -9,6 +9,7 @@ class JSONPathTest
 	public static function test():Void
 	{
 		testQueryPaths();
+		testQueryNewPaths();
 		testBookstore();
 		testBugs();
 		testErrors();
@@ -17,6 +18,9 @@ class JSONPathTest
 		trace('JSONPathTest: Done.');
 	}
 
+	/**
+	 * Test cases for the `JSONPath.queryPaths()` method.
+	 */
 	public static function testQueryPaths():Void
 	{
 		var data = JSONData.parse('{"k": "v"}');
@@ -403,6 +407,24 @@ class JSONPathTest
 
 		// var resultPaths = JSONPath.queryPaths('$.a[?match(@.b, "[jk]")]', data);
 		// var resultPaths = JSONPath.queryPaths('$.a[?search(@.b, "[jk]")]', data);
+	}
+
+	/**
+	 * Test cases for the `JSONPath.queryPaths()` method, with the `allowNewPaths` argument enabled.
+	 */
+	public static function testQueryNewPaths():Void {
+		// Test queries performed with `allowNewPaths` enabled.
+
+		// Object keys
+		var data = {"a": {"foo": 1}, "b": 2, "c": 3};
+		var resultPaths = JSONPath.queryPaths("$.a.bar", data, true);
+		Test.assertEqualsUnordered(resultPaths, ["$['a']['bar']"]);
+
+		// Nested object keys
+		trace('TEST CASE');
+		var data = {"a": {"foo": 1}, "b": 2, "c": 3};
+		var resultPaths = JSONPath.queryPaths("$.d.baz", data, true);
+		Test.assertEqualsUnordered(resultPaths, ["$['d']['baz']"]);
 	}
 
 	public static function testBookstore():Void
