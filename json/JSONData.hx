@@ -306,6 +306,16 @@ abstract JSONData(Dynamic) from Dynamic to Dynamic
 		}
 
 		var element = getDataByPart(pathParts[0]);
+
+		#if ASSUME_JSON_TYPE
+		if (element == null)
+		{
+			// If the next element is a dash, assume the part is an array. Otherwise, it's an object.
+			var next:String = pathParts[1].toString();
+			element = setDataByPart(pathParts[0], (next == "-" ? [] : {}));
+		}
+		#end
+
 		if (element == null)
 		{
 			throw 'K:/${pathParts[0]}';

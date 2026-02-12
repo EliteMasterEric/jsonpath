@@ -2,4 +2,5 @@
 <project>
   <!-- These values are added to the project XML when you include this library. -->
   <!-- <haxelib name="thx.semver" /> -->
+  <define name="ASSUME_JSON_TYPE"/> <!--Whether to automatically assume a type when it doesn't exist in the json.-->
 </project>
